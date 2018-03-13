@@ -4,26 +4,26 @@ with ImpulseGenerator;
 
 package body ICD is
 
-    procedure Init(Icd : out ICDType) is
+    procedure Init(IcdUnit : out ICDType) is
     begin
-        Icd.IsOn := False;
-        Heart.Init(Icd.Hrt);
-        HRM.Init(Icd.Monitor);
-        ImpulseGenerator.Init(Icd.Gen);
+        IcdUnit.IsOn := False;
+        Heart.Init(IcdUnit.Hrt);
+        HRM.Init(IcdUnit.Monitor);
+        ImpulseGenerator.Init(IcdUnit.Gen);
 
-        Icd.Patient := new Principal.Principal;
-        Icd.Cardiologist := new Principal.Principal;
-        Icd.ClinicalAssistant := new Principal.Principal;
+        IcdUnit.Patient := new Principal.Principal;
+        IcdUnit.Cardiologist := new Principal.Principal;
+        IcdUnit.ClinicalAssistant := new Principal.Principal;
 
-        Principal.InitPrincipalForRole(Icd.Patient.all, Principal.Patient);
-        Principal.InitPrincipalForRole(Icd.Cardiologist.all, Principal.Cardiologist);
-        Principal.InitPrincipalForRole(Icd.ClinicalAssistant.all, Principal.ClinicalAssistant);
+        Principal.InitPrincipalForRole(IcdUnit.Patient.all, Principal.Patient);
+        Principal.InitPrincipalForRole(IcdUnit.Cardiologist.all, Principal.Cardiologist);
+        Principal.InitPrincipalForRole(IcdUnit.ClinicalAssistant.all, Principal.ClinicalAssistant);
 
-        Icd.KnownPrincipals := new Network.PrincipalArray(0..2);
-        Icd.KnownPrincipals(0) := Icd.Patient;
-        Icd.KnownPrincipals(1) := Icd.Cardiologist;
-        Icd.KnownPrincipals(2) := Icd.ClinicalAssistant;
-        Network.Init(Icd.Net, Icd.KnownPrincipals);
+        IcdUnit.KnownPrincipals := new Network.PrincipalArray(0..2);
+        IcdUnit.KnownPrincipals(0) := IcdUnit.Patient;
+        IcdUnit.KnownPrincipals(1) := IcdUnit.Cardiologist;
+        IcdUnit.KnownPrincipals(2) := IcdUnit.ClinicalAssistant;
+        Network.Init(IcdUnit.Net, IcdUnit.KnownPrincipals);
     end Init;
 
     procedure On(Icd : in out ICDType; Prin : in Principal.Principal) is
@@ -49,5 +49,52 @@ package body ICD is
             ImpulseGenerator.Off(Icd.Gen);
         end if;
     end Off;
+
+    function Request(IcdUnit : in out ICDType; Command : in String; 
+    Prin : in Principal.Principal) return String is
+        type Commands is (ReadRateHistoryRequest, ReadSettingsRequest,
+        ChangeSettingsResponse, ModeOn, ModeOff);
+    begin
+        if Principal.HasRole(Prin, Principal.Patient)
+        OR Principal.HasRole(Prin, Principal.Cardiologist) then
+            case Commands'Value(Command) is
+                -- TODO complete the responses of each request
+                when ReadRateHistoryRequest => 
+                    return "RateHistoryResponse";
+                when ReadSettingsRequest => 
+                    return "Settings";
+                when ChangeSettingsResponse => 
+                    return "ChangeSettings";
+                when ModeOn =>
+                    On(IcdUnit, Prin);
+                    return "ICD is On";
+                when ModeOff =>
+                    Off(IcdUnit, Prin);
+                    return "ICD is Off";
+            end case;
+        else
+            return "None";
+        end if;
+    end Request;
+
+    function ReadRateHistoryResponse(Prin : in Principal.Principal) return RateHistory is
+        History : RateHistory;
+    begin
+        -- read the source of the message
+        -- read the recent 5 heart rate as indexes as value in the array
+        -- read the recent 5 measurement's time as value in the array
+        return History;
+    end ReadRateHistoryResponse;
+
+    function ReadSettingsResponse(Prin : in Principal.Principal) return Setting is
+        SettingReponse : Setting;
+    begin
+        return SettingReponse;
+    end ReadSettingsResponse;
+
+    function ChangeSettingsResponse(Prin : in Principal.Principal) return String is
+    begin
+        return "Setting has been changed";
+    end ChangeSettingsResponse;
 
 end ICD;
