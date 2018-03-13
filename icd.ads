@@ -1,4 +1,5 @@
 with Principal;
+with Heart;
 with HRM;
 with Network;
 with ImpulseGenerator;
@@ -9,15 +10,21 @@ package ICD is
     record
         -- the mode of the ICD
         IsOn : Boolean;
-        Patient : Principal;
-        Cardiologist : Principal;
-        ClinicalAssistant : Principal;
+        Hrt : Heart.HeartType;
+        Monitor : HRM.HRMType;
+        Gen : ImpulseGenerator.GeneratorType;
+        Net : Network.Network;
+
+        Patient : Principal.PrincipalPtr;
+        Cardiologist : Principal.PrincipalPtr;
+        ClinicalAssistant : Principal.PrincipalPtr;
+        KnownPrincipals : access Network.PrincipalArray;
     end record;
 
     procedure Init(Icd : out ICDType);
 
-    procedure On(Icd : out ICDType; Prin : in Principal);
+    procedure On(Icd : in out ICDType; Prin : in Principal.Principal);
 
-    procedure Off(Icd : out ICDType; Prin : in Principal);
+    procedure Off(Icd : in out ICDType; Prin : in Principal.Principal);
 
 end ICD;
