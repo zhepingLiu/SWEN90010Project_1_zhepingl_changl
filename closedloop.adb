@@ -1,19 +1,53 @@
-package body HRM is
+with Principal;
+with Network;
+with ICD;
+with HRM;
+with Measures; use Measures;
+with Heart;
+with ImpulseGenerator;
 
-    procedure Init() is
+package body ClosedLoop is
+
+    procedure Init is
+        Patient : Principal.PrincipalPtr;
+        Cardiologist : Principal.PrincipalPtr;
+        ClinicalAssistant : Principal.PrincipalPtr;
+
+        Net : Network.Network;
+        KnownPrincipals : access Network.PrincipalArray;
+
+        Hrt : Heart.HeartType;
+        Monitor : HRM.HRMType;
+        Gen : ImpulseGenerator.GeneratorType;
+        IcdUnit : ICD.ICDType;
+
+        CurrentTime : Measures.TickCount;
     begin
-        IcdUnit.Patient := new Principal.Principal;
-        IcdUnit.Cardiologist := new Principal.Principal;
-        IcdUnit.ClinicalAssistant := new Principal.Principal;
+        Patient := new Principal.Principal;
+        Cardiologist := new Principal.Principal;
+        ClinicalAssistant := new Principal.Principal;
 
-        Principal.InitPrincipalForRole(IcdUnit.Patient.all, Principal.Patient);
-        Principal.InitPrincipalForRole(IcdUnit.Cardiologist.all, Principal.Cardiologist);
-        Principal.InitPrincipalForRole(IcdUnit.ClinicalAssistant.all, Principal.ClinicalAssistant);
+        Principal.InitPrincipalForRole(Patient.all, Principal.Patient);
+        Principal.InitPrincipalForRole(Cardiologist.all, Principal.Cardiologist);
+        Principal.InitPrincipalForRole(ClinicalAssistant.all, Principal.ClinicalAssistant);
 
-        IcdUnit.KnownPrincipals := new Network.PrincipalArray(0..2);
-        IcdUnit.KnownPrincipals(0) := IcdUnit.Patient;
-        IcdUnit.KnownPrincipals(1) := IcdUnit.Cardiologist;
-        IcdUnit.KnownPrincipals(2) := IcdUnit.ClinicalAssistant;
-        Network.Init(IcdUnit.Net, IcdUnit.KnownPrincipals);
+        KnownPrincipals := new Network.PrincipalArray(0..2);
+        KnownPrincipals(0) := Patient;
+        KnownPrincipals(1) := Cardiologist;
+        KnownPrincipals(2) := ClinicalAssistant;
+        Network.Init(Net, KnownPrincipals);
+
+        Heart.Init(Hrt);
+        HRM.Init(Monitor);
+        ImpulseGenerator.Init(Gen);
+        ICD.Init(IcdUnit, Monitor, Hrt, Gen, Net, KnownPrincipals);
+
+        CurrentTime := 0;
     end Init;
-end HRM;
+
+    procedure Tick is
+    begin
+        -- TODO Not implemented
+        Init;
+    end Tick;
+end ClosedLoop;
