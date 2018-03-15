@@ -47,12 +47,13 @@ package ICD is
 private
 
     procedure AppendHistory(IcdUnit : in out ICDType; RecordRate : in Network.RateRecord);
+    function CheckAuthorisation(IcdUnit : in ICDType; Prin : Principal.PrincipalPtr; Role : in Principal.Role) return Boolean;
     function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean;
-    function On(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    function Off(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    function On(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    function Off(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     function ReadSettingsResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    function ChangeSettingsResponse(IcdUnit : out ICD.ICDType; Prin : in Principal.PrincipalPtr; 
+    function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType; Prin : in Principal.PrincipalPtr; 
                                     Request : in Network.NetworkMessage) return Network.NetworkMessage;
 
 end ICD;

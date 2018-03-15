@@ -15,7 +15,6 @@ package body ICD is
         IcdUnit.Gen := Gen;
         IcdUnit.Net := Net;
         IcdUnit.KnownPrincipals := KnownPrincipals;
-
         IcdUnit.HistoryPos := IcdUnit.History'First;
 
         -- assign the heart object (need refactor)
@@ -27,33 +26,33 @@ package body ICD is
 
     end Init;
 
-    function On(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+    function On(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOn);
     begin
         -- check the principal of the operator
-        if Principal.HasRole(Prin.all, ClinicalAssistant) 
-        OR Principal.HasRole(Prin.all, Cardiologist) then
+        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
+        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
             -- turn on the ICD unit
-            Icd.IsOn := True;
+            IcdUnit.IsOn := True;
             -- turn on the HRM (need to pass the Hrt in)
-            HRM.On(Icd.Monitor, Icd.Hrt);
+            HRM.On(IcdUnit.Monitor, IcdUnit.Hrt);
             -- turn on the Impulse Generator
-            ImpulseGenerator.On(Icd.Gen);
+            ImpulseGenerator.On(IcdUnit.Gen);
             -- set the source of the response message
             Response.MOnSource := Prin;
         end if;
         return Response;
     end On;
 
-    function Off(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+    function Off(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOff);
     begin
         -- check the principal of the operator
-        if Principal.HasRole(Prin.all, Principal.ClinicalAssistant) 
-        OR Principal.HasRole(Prin.all, Principal.Cardiologist) then
-            Icd.IsOn := False;
-            HRM.Off(Icd.Monitor);
-            ImpulseGenerator.Off(Icd.Gen);
+        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
+        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
+            IcdUnit.IsOn := False;
+            HRM.Off(IcdUnit.Monitor);
+            ImpulseGenerator.Off(IcdUnit.Gen);
             Response.MOffSource := Prin;
         end if;
         return Response;
@@ -86,8 +85,8 @@ package body ICD is
                                      Prin : Principal.PrincipalPtr) return Network.NetworkMessage is 
         Response : NetworkMessage(ReadRateHistoryResponse);
     begin
-        if Principal.HasRole(Prin.all, Principal.ClinicalAssistant) 
-        OR Principal.HasRole(Prin.all, Principal.Cardiologist) then
+        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
+        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
             -- read the source of the message
             Response.HDestination := Prin;
             -- read the history for 5 recent heart rate and time
@@ -100,8 +99,8 @@ package body ICD is
                                   Prin : Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : NetworkMessage(ReadSettingsResponse);
     begin
-        if Principal.HasRole(Prin.all, Principal.ClinicalAssistant) 
-        OR Principal.HasRole(Prin.all, Principal.Cardiologist) then
+        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
+        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
             Response.RDestination := Prin;
             Response.RTachyBound := IcdUnit.CurrentSetting.TachyBound;
             Response.RJoulesToDeliver := IcdUnit.CurrentSetting.JoulesToDeliver;
@@ -109,11 +108,11 @@ package body ICD is
         return Response;
     end ReadSettingsResponse;
 
-    function ChangeSettingsResponse(IcdUnit : out ICD.ICDType; Prin : Principal.PrincipalPtr;
+    function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType; Prin : Principal.PrincipalPtr;
                                     Request : in Network.NetworkMessage) return Network.NetworkMessage is
         Response : NetworkMessage(ChangeSettingsResponse);
     begin
-        if Principal.HasRole(Prin.all, Principal.Cardiologist) then
+        if CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
             Response.CDestination := Prin;
             -- modify the settings here
             IcdUnit.CurrentSetting.TachyBound := Request.CTachyBound;
@@ -146,6 +145,19 @@ package body ICD is
             end if;
         end if;
     end Tick;
+
+    function CheckAuthorisation(IcdUnit : in ICDType; Prin : Principal.PrincipalPtr; Role : Principal.Role) return Boolean is
+        Authorised : Boolean := False;
+    begin
+        if (Principal.HasRole(Prin.all, Role)) then
+            for I in IcdUnit.KnownPrincipals'Range loop
+                if (IcdUnit.KnownPrincipals(I) = Prin) then
+                    Authorised := True;
+                end if;
+            end loop;
+        end if;
+        return Authorised;
+    end CheckAuthorisation;
 
     function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean is
         TotalChange : Integer;
