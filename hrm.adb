@@ -41,17 +41,16 @@ package body HRM is
    procedure Tick(Hrm : in out HRMType; Hrt : in Heart.HeartType) is
    begin
       if Hrm.IsOn then
-	 -- read the heart rate from the heart
-	 Heart.GetRate(Hrt, Hrm.Rate);
+	      -- read the heart rate from the heart
+	      Heart.GetRate(Hrt, Hrm.Rate);
 	 
-	 -- Insert some random variation
-	 Hrm.Rate := 
-	   Measures.LimitBPM(RandomNumber.UniformIntegerWithError(Hrm.Rate, 
+	      -- Insert some random variation
+	      Hrm.Rate := 
+	      Measures.LimitBPM(RandomNumber.UniformIntegerWithError(Hrm.Rate, 
 								  Error));
       else
-	 -- If the monitor is not on, return 0 for both values
-	 Hrm.Rate := Measures.BPM'First;
+	      -- If the monitor is not on, return 0 for both values
+	      Hrm.Rate := Measures.BPM'First;
       end if; 
-      
    end Tick;
 end HRM;

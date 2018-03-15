@@ -7,8 +7,11 @@ with Measures;
 
 package ICD is
 
-    InitialTachyBound : constant Integer := 100;
-    InitialJoulesToDeliver : constant Integer := 30;
+    INITIAL_TACHY_BOUND : constant Integer := 100;
+    INITIAL_JOULES_TO_DELIVER : constant Integer := 30;
+    TACHYCARDIA_RATE : constant Integer := 15;
+    SIGNAL_NUMBER : constant Integer := 10;
+    SIGNAL_JOULES : constant Measures.Joules := 2;
 
     type Setting is
     record
@@ -24,6 +27,9 @@ package ICD is
         Gen : ImpulseGenerator.GeneratorType;
         Net : Network.Network;
         CurrentSetting : ICD.Setting;
+        History : Network.RateHistory;
+        ZeroHistory : Network.RateRecord;
+        HistoryPos : Integer;
 
         -- these variables may not be included in this package
         Hrt : Heart.HeartType;
@@ -37,6 +43,10 @@ package ICD is
     function Off(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     function Request(IcdUnit : in out ICDType; Command : in Network.NetworkMessage; 
                     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    procedure Tick(IcdUnit : in out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
+                    Gen : in out ImpulseGenerator.GeneratorType; CurrentTime : Measures.TickCount);
+    procedure AppendHistory(IcdUnit : in out ICDType; RecordRate : in Network.RateRecord);
+    function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean;
 
 private
 

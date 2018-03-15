@@ -158,5 +158,5 @@ package body Network is
          Net.CurrentMessage := GenerateRandomMessage(Net.Principals.all);
       end if;
    end Tick;
-   
+
 end Network;
