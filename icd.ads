@@ -39,17 +39,17 @@ package ICD is
     procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
                     Gen : in ImpulseGenerator.GeneratorType; Net : in Network.Network;
                     KnownPrincipals : access Network.PrincipalArray);
-    function On(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    function Off(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     function Request(IcdUnit : in out ICDType; Command : in Network.NetworkMessage; 
                     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     procedure Tick(IcdUnit : in out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
                     Gen : in out ImpulseGenerator.GeneratorType; CurrentTime : Measures.TickCount);
-    procedure AppendHistory(IcdUnit : in out ICDType; RecordRate : in Network.RateRecord);
-    function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean;
 
 private
 
+    procedure AppendHistory(IcdUnit : in out ICDType; RecordRate : in Network.RateRecord);
+    function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean;
+    function On(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    function Off(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     function ReadSettingsResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
     function ChangeSettingsResponse(IcdUnit : out ICD.ICDType; Prin : in Principal.PrincipalPtr; 
