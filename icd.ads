@@ -3,41 +3,46 @@ with Heart;
 with HRM;
 with Network;
 with ImpulseGenerator;
+with Measures;
 
 package ICD is
+
+    InitialTachyBound : constant Integer := 100;
+    InitialJoulesToDeliver : constant Integer := 30;
+
+    type Setting is
+    record
+        TachyBound : Measures.BPM;
+        JoulesToDeliver: Measures.Joules;
+    end record;
 
     type ICDType is 
     record
         -- the mode of the ICD
         IsOn : Boolean;
-        Hrt : Heart.HeartType;
         Monitor : HRM.HRMType;
         Gen : ImpulseGenerator.GeneratorType;
         Net : Network.Network;
+        CurrentSetting : ICD.Setting;
 
-        Patient : Principal.PrincipalPtr;
-        Cardiologist : Principal.PrincipalPtr;
-        ClinicalAssistant : Principal.PrincipalPtr;
+        -- these variables may not be included in this package
+        Hrt : Heart.HeartType;
         KnownPrincipals : access Network.PrincipalArray;
-
     end record;
 
-    procedure Init(IcdUnit : out ICDType);
-    procedure On(Icd : in out ICDType; Prin : in Principal.Principal);
-    procedure Off(Icd : in out ICDType; Prin : in Principal.Principal);
-    function Request(IcdUnit : in out ICDType; Command : in String; Prin : in Principal.Principal) return String;
+    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
+                    Gen : in ImpulseGenerator.GeneratorType; Net : in Network.Network;
+                    KnownPrincipals : access Network.PrincipalArray);
+    function On(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    function Off(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    function Request(IcdUnit : in out ICDType; Command : in Network.NetworkMessage; 
+                    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
 
 private
 
-    type RateHistory is array (Integer) of Float;
+    function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    function ReadSettingsResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+    function ChangeSettingsResponse(IcdUnit : out ICD.ICDType; Prin : in Principal.PrincipalPtr; 
+                                    Request : in Network.NetworkMessage) return Network.NetworkMessage;
 
-    type Setting is
-    record
-        TachyBound : Integer;
-        JoulesToDeliver: Integer;
-    end record;
-
-    function ReadRateHistoryResponse(Prin : in Principal.Principal) return RateHistory;
-    function ReadSettingsResponse(Prin : in Principal.Principal) return Setting;
-    function ChangeSettingsResponse(Prin : in Principal.Principal) return String;
 end ICD;

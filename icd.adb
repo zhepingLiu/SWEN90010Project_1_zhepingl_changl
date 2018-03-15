@@ -1,100 +1,114 @@
+with Ada.Text_IO; use Ada.Text_IO;
 with Principal; use Principal;
 with HRM;
 with ImpulseGenerator;
+with Network; use Network;
 
 package body ICD is
 
-    procedure Init(IcdUnit : out ICDType) is
+    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
+                    Gen : in ImpulseGenerator.GeneratorType; Net : in Network.Network;
+                    KnownPrincipals : access Network.PrincipalArray) is
     begin
         IcdUnit.IsOn := False;
-        Heart.Init(IcdUnit.Hrt);
-        HRM.Init(IcdUnit.Monitor);
-        ImpulseGenerator.Init(IcdUnit.Gen);
+        IcdUnit.Monitor := Monitor;
+        IcdUnit.Gen := Gen;
+        IcdUnit.Net := Net;
+        IcdUnit.KnownPrincipals := KnownPrincipals;
 
-        IcdUnit.Patient := new Principal.Principal;
-        IcdUnit.Cardiologist := new Principal.Principal;
-        IcdUnit.ClinicalAssistant := new Principal.Principal;
+        -- assign the heart object (need refactor)
+        IcdUnit.Hrt := Hrt;
 
-        Principal.InitPrincipalForRole(IcdUnit.Patient.all, Principal.Patient);
-        Principal.InitPrincipalForRole(IcdUnit.Cardiologist.all, Principal.Cardiologist);
-        Principal.InitPrincipalForRole(IcdUnit.ClinicalAssistant.all, Principal.ClinicalAssistant);
+        -- initialise the settings of ICD
+        IcdUnit.CurrentSetting.TachyBound := InitialTachyBound;
+        IcdUnit.CurrentSetting.JoulesToDeliver := InitialJoulesToDeliver;
 
-        IcdUnit.KnownPrincipals := new Network.PrincipalArray(0..2);
-        IcdUnit.KnownPrincipals(0) := IcdUnit.Patient;
-        IcdUnit.KnownPrincipals(1) := IcdUnit.Cardiologist;
-        IcdUnit.KnownPrincipals(2) := IcdUnit.ClinicalAssistant;
-        Network.Init(IcdUnit.Net, IcdUnit.KnownPrincipals);
     end Init;
 
-    procedure On(Icd : in out ICDType; Prin : in Principal.Principal) is
+    function On(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+        Response : Network.NetworkMessage(ModeOn);
     begin
         -- check the principla of the operator
-        if Principal.HasRole(Prin, Patient) OR Principal.HasRole(Prin, Cardiologist) then
+        if Principal.HasRole(Prin.all, Patient) OR Principal.HasRole(Prin.all, Cardiologist) then
             -- turn on the ICD unit
             Icd.IsOn := True;
-            -- turn on the HRM
+            -- turn on the HRM (need to pass the Hrt in)
             HRM.On(Icd.Monitor, Icd.Hrt);
             -- turn on the Impulse Generator
             ImpulseGenerator.On(Icd.Gen);
         end if;
+        return Response;
     end On;
 
-    procedure Off(Icd : in out ICDType; Prin : in Principal.Principal) is
+    function Off(Icd : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+        Response : Network.NetworkMessage(ModeOff);
     begin
         -- check the principla of the operator
-        if Principal.HasRole(Prin, Principal.Patient) 
-        OR Principal.HasRole(Prin, Principal.Cardiologist) then
+        if Principal.HasRole(Prin.all, Principal.Patient) 
+        OR Principal.HasRole(Prin.all, Principal.Cardiologist) then
             Icd.IsOn := False;
             HRM.Off(Icd.Monitor);
             ImpulseGenerator.Off(Icd.Gen);
         end if;
+        return Response;
     end Off;
 
-    function Request(IcdUnit : in out ICDType; Command : in String; 
-    Prin : in Principal.Principal) return String is
-        type Commands is (ReadRateHistoryRequest, ReadSettingsRequest,
-        ChangeSettingsResponse, ModeOn, ModeOff);
+    function Request(IcdUnit : in out ICDType; Command : in Network.NetworkMessage; 
+                    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
     begin
-        if Principal.HasRole(Prin, Principal.Patient)
-        OR Principal.HasRole(Prin, Principal.Cardiologist) then
-            case Commands'Value(Command) is
+        -- TODO make sure the Principlas are authorised only to this ICD unit
+        if Principal.HasRole(Prin.all, Principal.Cardiologist)
+        OR Principal.HasRole(Prin.all, Principal.Cardiologist)
+        OR Principal.HasRole(Prin.all, Principal.ClinicalAssistant) then
+            case Command.MessageType is
                 -- TODO complete the responses of each request
-                when ReadRateHistoryRequest => 
-                    return "RateHistoryResponse";
+                when ReadRateHistoryRequest =>
+                    return ReadRateHistoryResponse(IcdUnit, Prin);
                 when ReadSettingsRequest => 
-                    return "Settings";
-                when ChangeSettingsResponse => 
-                    return "ChangeSettings";
+                    return ReadSettingsResponse(IcdUnit, Prin);
+                -- this is only allowed for Cardiologist
+                when ChangeSettingsRequest => 
+                    return ICD.ChangeSettingsResponse(IcdUnit, Prin, Command);
                 when ModeOn =>
-                    On(IcdUnit, Prin);
-                    return "ICD is On";
+                    return On(IcdUnit, Prin);
                 when ModeOff =>
-                    Off(IcdUnit, Prin);
-                    return "ICD is Off";
+                    return Off(IcdUnit, Prin);
+                when others =>
+                    -- return what message here?
+                    Put_Line("ERROR: Incorrect Message");
             end case;
-        else
-            return "None";
         end if;
     end Request;
 
-    function ReadRateHistoryResponse(Prin : in Principal.Principal) return RateHistory is
-        History : RateHistory;
+    function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; Prin : Principal.PrincipalPtr) return Network.NetworkMessage is
+        History : Network.RateHistory;
+        Response : NetworkMessage(ReadRateHistoryResponse);
     begin
         -- read the source of the message
-        -- read the recent 5 heart rate as indexes as value in the array
-        -- read the recent 5 measurement's time as value in the array
-        return History;
+        Response.HDestination := Prin;
+        -- read the history for 5 recent heart rate and time
+        Response.History := History;
+        return Response;
     end ReadRateHistoryResponse;
 
-    function ReadSettingsResponse(Prin : in Principal.Principal) return Setting is
-        SettingReponse : Setting;
+    function ReadSettingsResponse(IcdUnit : in ICD.ICDType; Prin : Principal.PrincipalPtr) return Network.NetworkMessage is
+        Response : NetworkMessage(ReadSettingsResponse);
     begin
-        return SettingReponse;
+        Response.RDestination := Prin;
+        Response.RTachyBound := IcdUnit.CurrentSetting.TachyBound;
+        Response.RJoulesToDeliver := IcdUnit.CurrentSetting.JoulesToDeliver;
+        return Response;
     end ReadSettingsResponse;
 
-    function ChangeSettingsResponse(Prin : in Principal.Principal) return String is
+    function ChangeSettingsResponse(IcdUnit : out ICD.ICDType; Prin : Principal.PrincipalPtr;
+                                    Request : in Network.NetworkMessage) return Network.NetworkMessage is
+        Response : NetworkMessage(ChangeSettingsResponse);
     begin
-        return "Setting has been changed";
+        Response.CDestination := Prin;
+        -- modify the settings here
+        IcdUnit.CurrentSetting.TachyBound := Request.CTachyBound;
+        IcdUnit.CurrentSetting.JoulesToDeliver := Request.CJoulesToDeliver;
+        return Response;
     end ChangeSettingsResponse;
 
 end ICD;
