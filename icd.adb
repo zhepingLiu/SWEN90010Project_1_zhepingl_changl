@@ -3,12 +3,12 @@ with Principal; use Principal;
 with HRM;
 with ImpulseGenerator;
 with Network; use Network;
+with Measures; use Measures;
 
 package body ICD is
 
     procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
-    Hrt : in Heart.HeartType; Gen : in ImpulseGenerator.GeneratorType;
-    Net : in Network.Network; 
+    Gen : in ImpulseGenerator.GeneratorType; Net : in Network.Network; 
     KnownPrincipals : access Network.PrincipalArray) is
     begin
         IcdUnit.IsOn := False;
@@ -18,16 +18,14 @@ package body ICD is
         IcdUnit.KnownPrincipals := KnownPrincipals;
         IcdUnit.HistoryPos := IcdUnit.History'First;
 
-        -- assign the heart object (need refactor)
-        IcdUnit.Hrt := Hrt;
-
         -- initialise the settings of ICD
         IcdUnit.CurrentSetting.TachyBound := INITIAL_TACHY_BOUND;
         IcdUnit.CurrentSetting.JoulesToDeliver := INITIAL_JOULES_TO_DELIVER;
 
+        IcdUnit.TachyCount := 0;
     end Init;
 
-    function On(IcdUnit : in out ICDType; 
+    function On(IcdUnit : in out ICDType; Hrt : Heart.HeartType;
     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOn);
     begin
@@ -37,7 +35,7 @@ package body ICD is
             -- turn on the ICD unit
             IcdUnit.IsOn := True;
             -- turn on the HRM (need to pass the Hrt in)
-            HRM.On(IcdUnit.Monitor, IcdUnit.Hrt);
+            HRM.On(IcdUnit.Monitor, Hrt);
             -- turn on the Impulse Generator
             ImpulseGenerator.On(IcdUnit.Gen);
             -- set the source of the response message
@@ -62,7 +60,7 @@ package body ICD is
     end Off;
 
     function Request(IcdUnit : in out ICDType; 
-    Command : in Network.NetworkMessage;
+    Command : in Network.NetworkMessage; Hrt : in Heart.HeartType;
     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage;
     begin
@@ -75,7 +73,7 @@ package body ICD is
             when ChangeSettingsRequest => 
                 return ICD.ChangeSettingsResponse(IcdUnit, Prin, Command);
             when ModeOn =>
-                return On(IcdUnit, Prin);
+                return On(IcdUnit, Hrt, Prin);
             when ModeOff =>
                 return Off(IcdUnit, Prin);
             when others =>
@@ -127,14 +125,13 @@ package body ICD is
         return Response;
     end ChangeSettingsResponse;
 
-    procedure Tick(IcdUnit : in out ICDType; Monitor : in HRM.HRMType; 
-    Hrt : in Heart.HeartType; Gen : in out ImpulseGenerator.GeneratorType;
+    procedure Tick(IcdUnit : in out ICDType; 
     CurrentTime : Measures.TickCount) is
         RecordRate : Network.RateRecord;
     begin
         if IcdUnit.IsOn then
             -- record the current rate and current time
-            HRM.GetRate(Monitor, RecordRate.Rate);
+            HRM.GetRate(IcdUnit.Monitor, RecordRate.Rate);
             RecordRate.Time := CurrentTime;
             -- append the record into History
             AppendHistory(IcdUnit, RecordRate);
@@ -142,14 +139,25 @@ package body ICD is
             -- check if the patient has tachycardia at this moment
             if (RecordRate.Rate >= IcdUnit.CurrentSetting.TachyBound 
                 + TACHYCARDIA_RATE) then
-               for I in Integer range 1..SIGNAL_NUMBER loop
-                    ImpulseGenerator.SetImpulse(Gen, SIGNAL_JOULES);
-               end loop;
+                if (IcdUnit.TachyCount = 1) then
+                    IcdUnit.ShotTime := CurrentTime + ICD.SIGNAL_INTERVAL;
+                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
+                    IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
+                elsif (IcdUnit.TachyCount < 10 AND 
+                        CurrentTime = IcdUnit.ShotTime) then
+                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
+                    IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
+                    IcdUnit.ShotTime := IcdUnit.ShotTime + ICD.SIGNAL_INTERVAL;
+                end if;
+
+                if (IcdUnit.TachyCount = 10) then
+                    IcdUnit.TachyCount := 0;
+                end if;
             end if;
 
             -- check if the patient has ventricle fibrillation at this moment
             if (IsVentricleFibrillation(IcdUnit)) then
-                ImpulseGenerator.SetImpulse(Gen, 
+                ImpulseGenerator.SetImpulse(IcdUnit.Gen, 
                                     IcdUnit.CurrentSetting.JoulesToDeliver);
             end if;
         end if;
@@ -170,22 +178,32 @@ package body ICD is
     end CheckAuthorisation;
 
     function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean is
-        TotalChange : Integer;
+        TotalChange : Integer := 0;
         AverageChange : Integer;
+        I : Integer := 0;
+        LoopRange : Integer;
     begin
+        LoopRange := IcdUnit.History'Last + NUMBER_PREHISTORY;
         -- there is no 6 history records
         if (IcdUnit.HistoryPos <= IcdUnit.History'Last) then
             return False;
         else
-            for I in IcdUnit.History'Range loop
+            while I < LoopRange loop
                 if (I = 1) then
-                    TotalChange := abs (IcdUnit.History(I).Rate - 
-                                        IcdUnit.ZeroHistory.Rate);
+                    TotalChange := abs (IcdUnit.PreHistory(2).Rate - 
+                                        IcdUnit.PreHistory(1).Rate);
+                    I := I + 1;
+                elsif (I = 2) then
+                    TotalChange := abs (IcdUnit.History(I-1).Rate - 
+                                        IcdUnit.PreHistory(2).Rate);
+                    I := I + 1;
                 else
-                    TotalChange := TotalChange + abs (IcdUnit.History(I).Rate
-                                                 - IcdUnit.History(I-1).Rate);
+                    TotalChange := TotalChange + abs (IcdUnit.History(I-1).Rate
+                                                 - IcdUnit.History(I-2).Rate);
+                    I := I + 1;
                 end if;
             end loop;
+            
             AverageChange := TotalChange / 6;
 
             if (AverageChange >= 10) then
@@ -203,12 +221,14 @@ package body ICD is
             IcdUnit.History(IcdUnit.HistoryPos) := RecordRate;
             IcdUnit.HistoryPos := IcdUnit.HistoryPos + 1;
         else
-            IcdUnit.ZeroHistory := IcdUnit.History(1);
+            IcdUnit.PreHistory(1) := IcdUnit.PreHistory(2);
+            IcdUnit.PreHistory(2) := IcdUnit.History(1);
             IcdUnit.History(1) := IcdUnit.History(2);
             IcdUnit.History(2) := IcdUnit.History(3);
             IcdUnit.History(3) := IcdUnit.History(4);
             IcdUnit.History(4) := IcdUnit.History(5);
             IcdUnit.History(5) := RecordRate;
+            IcdUnit.HistoryPos := IcdUnit.History'Last + NUMBER_PREHISTORY;
         end if;
     end AppendHistory;
 end ICD;

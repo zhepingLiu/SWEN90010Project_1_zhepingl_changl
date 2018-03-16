@@ -12,6 +12,10 @@ package ICD is
     TACHYCARDIA_RATE : constant Integer := 15;
     SIGNAL_NUMBER : constant Integer := 10;
     SIGNAL_JOULES : constant Measures.Joules := 2;
+    SIGNAL_INTERVAL : constant Measures.TickCount := 4;
+    NUMBER_PREHISTORY : constant Integer := 2;
+
+    type PreRateHistory is array (Integer range 1..2) of Network.RateRecord;
 
     type Setting is
     record
@@ -25,28 +29,26 @@ package ICD is
         IsOn : Boolean;
         Monitor : HRM.HRMType;
         Gen : ImpulseGenerator.GeneratorType;
+        KnownPrincipals : access Network.PrincipalArray;
         Net : Network.Network;
         CurrentSetting : ICD.Setting;
         History : Network.RateHistory;
-        ZeroHistory : Network.RateRecord;
+        PreHistory : PreRateHistory;
         HistoryPos : Integer;
 
-        -- these variables may not be included in this package
-        Hrt : Heart.HeartType;
-        KnownPrincipals : access Network.PrincipalArray;
+        TachyCount : Integer;
+        ShotTime : Measures.TickCount;
     end record;
 
     procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
-    Hrt : in Heart.HeartType; Gen : in ImpulseGenerator.GeneratorType; 
+    Gen : in ImpulseGenerator.GeneratorType; 
     Net : in Network.Network; KnownPrincipals : access Network.PrincipalArray);
 
     function Request(IcdUnit : in out ICDType; 
-    Command : in Network.NetworkMessage; 
+    Command : in Network.NetworkMessage; Hrt : in Heart.HeartType;
     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
 
     procedure Tick(IcdUnit : in out ICDType; 
-    Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
-    Gen : in out ImpulseGenerator.GeneratorType; 
     CurrentTime : Measures.TickCount);
 
 private
@@ -59,8 +61,8 @@ private
 
     function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean;
 
-    function On(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) 
-                return Network.NetworkMessage;
+    function On(IcdUnit : in out ICDType; Hrt : in Heart.HeartType; 
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
 
     function Off(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) 
                 return Network.NetworkMessage;

@@ -75,7 +75,8 @@ package body Network is
    begin
       -- the princpals array for the network accommodates the 3 extra unknown
       -- ones too
-      Net.Principals := new PrincipalArray(KnownPrincipals'First..KnownPrincipals'Last+3);
+      Net.Principals := new PrincipalArray(
+        KnownPrincipals'First..KnownPrincipals'Last+3);
       -- copy of the known principals
       for Index in KnownPrincipals'Range loop
          Net.Principals(Index) := KnownPrincipals(Index);
@@ -140,7 +141,8 @@ package body Network is
            Put("; History: "); 
            for Index in Message.History'Range loop
               Ada.Integer_Text_IO.Put(Integer(Message.History(Index).Rate));
-              Put(" @ "); Ada.Integer_Text_IO.Put(Integer(Message.History(Index).Time));
+              Put(" @ "); Ada.Integer_Text_IO.Put(Integer(
+                Message.History(Index).Time));
               Put(", ");
            end loop;
            Put(")"); New_Line;
