@@ -36,24 +36,43 @@ package ICD is
         KnownPrincipals : access Network.PrincipalArray;
     end record;
 
-    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
-                    Gen : in ImpulseGenerator.GeneratorType; Net : in Network.Network;
-                    KnownPrincipals : access Network.PrincipalArray);
-    function Request(IcdUnit : in out ICDType; Command : in Network.NetworkMessage; 
-                    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    procedure Tick(IcdUnit : in out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
-                    Gen : in out ImpulseGenerator.GeneratorType; CurrentTime : Measures.TickCount);
+    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
+    Hrt : in Heart.HeartType; Gen : in ImpulseGenerator.GeneratorType; 
+    Net : in Network.Network; KnownPrincipals : access Network.PrincipalArray);
+
+    function Request(IcdUnit : in out ICDType; 
+    Command : in Network.NetworkMessage; 
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+
+    procedure Tick(IcdUnit : in out ICDType; 
+    Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
+    Gen : in out ImpulseGenerator.GeneratorType; 
+    CurrentTime : Measures.TickCount);
 
 private
 
-    procedure AppendHistory(IcdUnit : in out ICDType; RecordRate : in Network.RateRecord);
-    function CheckAuthorisation(IcdUnit : in ICDType; Prin : Principal.PrincipalPtr; Role : in Principal.Role) return Boolean;
+    procedure AppendHistory(IcdUnit : in out ICDType; 
+    RecordRate : in Network.RateRecord);
+
+    function CheckAuthorisation(IcdUnit : in ICDType; 
+    Prin : Principal.PrincipalPtr; Role : in Principal.Role) return Boolean;
+
     function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean;
-    function On(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    function Off(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    function ReadSettingsResponse(IcdUnit : in ICD.ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
-    function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType; Prin : in Principal.PrincipalPtr; 
-                                    Request : in Network.NetworkMessage) return Network.NetworkMessage;
+
+    function On(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) 
+                return Network.NetworkMessage;
+
+    function Off(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) 
+                return Network.NetworkMessage;
+
+    function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; 
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+
+    function ReadSettingsResponse(IcdUnit : in ICD.ICDType; 
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
+
+    function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType; 
+    Prin : in Principal.PrincipalPtr; 
+    Request : in Network.NetworkMessage) return Network.NetworkMessage;
 
 end ICD;

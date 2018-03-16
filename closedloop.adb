@@ -28,8 +28,10 @@ package body ClosedLoop is
         ClinicalAssistant := new Principal.Principal;
 
         Principal.InitPrincipalForRole(Patient.all, Principal.Patient);
-        Principal.InitPrincipalForRole(Cardiologist.all, Principal.Cardiologist);
-        Principal.InitPrincipalForRole(ClinicalAssistant.all, Principal.ClinicalAssistant);
+        Principal.InitPrincipalForRole(Cardiologist.all, 
+                                        Principal.Cardiologist);
+        Principal.InitPrincipalForRole(ClinicalAssistant.all, 
+                                        Principal.ClinicalAssistant);
 
         KnownPrincipals := new Network.PrincipalArray(0..2);
         KnownPrincipals(0) := Patient;

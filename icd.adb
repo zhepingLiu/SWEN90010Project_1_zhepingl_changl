@@ -6,9 +6,10 @@ with Network; use Network;
 
 package body ICD is
 
-    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
-                    Gen : in ImpulseGenerator.GeneratorType; Net : in Network.Network;
-                    KnownPrincipals : access Network.PrincipalArray) is
+    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
+    Hrt : in Heart.HeartType; Gen : in ImpulseGenerator.GeneratorType;
+    Net : in Network.Network; 
+    KnownPrincipals : access Network.PrincipalArray) is
     begin
         IcdUnit.IsOn := False;
         IcdUnit.Monitor := Monitor;
@@ -26,7 +27,8 @@ package body ICD is
 
     end Init;
 
-    function On(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+    function On(IcdUnit : in out ICDType; 
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOn);
     begin
         -- check the principal of the operator
@@ -44,7 +46,8 @@ package body ICD is
         return Response;
     end On;
 
-    function Off(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+    function Off(IcdUnit : in out ICDType; 
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOff);
     begin
         -- check the principal of the operator
@@ -58,8 +61,9 @@ package body ICD is
         return Response;
     end Off;
 
-    function Request(IcdUnit : in out ICDType; Command : in Network.NetworkMessage; 
-                    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+    function Request(IcdUnit : in out ICDType; 
+    Command : in Network.NetworkMessage;
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage;
     begin
         case Command.MessageType is
@@ -82,7 +86,7 @@ package body ICD is
     end Request;
 
     function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; 
-                                     Prin : Principal.PrincipalPtr) return Network.NetworkMessage is 
+    Prin : Principal.PrincipalPtr) return Network.NetworkMessage is 
         Response : NetworkMessage(ReadRateHistoryResponse);
     begin
         if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
@@ -96,20 +100,22 @@ package body ICD is
     end ReadRateHistoryResponse;
 
     function ReadSettingsResponse(IcdUnit : in ICD.ICDType; 
-                                  Prin : Principal.PrincipalPtr) return Network.NetworkMessage is
+    Prin : Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : NetworkMessage(ReadSettingsResponse);
     begin
         if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
         OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
             Response.RDestination := Prin;
             Response.RTachyBound := IcdUnit.CurrentSetting.TachyBound;
-            Response.RJoulesToDeliver := IcdUnit.CurrentSetting.JoulesToDeliver;
+            Response.RJoulesToDeliver := 
+                                IcdUnit.CurrentSetting.JoulesToDeliver;
         end if;
         return Response;
     end ReadSettingsResponse;
 
-    function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType; Prin : Principal.PrincipalPtr;
-                                    Request : in Network.NetworkMessage) return Network.NetworkMessage is
+    function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType;
+    Prin : Principal.PrincipalPtr;
+    Request : in Network.NetworkMessage) return Network.NetworkMessage is
         Response : NetworkMessage(ChangeSettingsResponse);
     begin
         if CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
@@ -121,8 +127,9 @@ package body ICD is
         return Response;
     end ChangeSettingsResponse;
 
-    procedure Tick(IcdUnit : in out ICDType; Monitor : in HRM.HRMType; Hrt : in Heart.HeartType;
-                    Gen : in out ImpulseGenerator.GeneratorType; CurrentTime : Measures.TickCount) is
+    procedure Tick(IcdUnit : in out ICDType; Monitor : in HRM.HRMType; 
+    Hrt : in Heart.HeartType; Gen : in out ImpulseGenerator.GeneratorType;
+    CurrentTime : Measures.TickCount) is
         RecordRate : Network.RateRecord;
     begin
         if IcdUnit.IsOn then
@@ -133,7 +140,8 @@ package body ICD is
             AppendHistory(IcdUnit, RecordRate);
 
             -- check if the patient has tachycardia at this moment
-            if (RecordRate.Rate >= IcdUnit.CurrentSetting.TachyBound + TACHYCARDIA_RATE) then
+            if (RecordRate.Rate >= IcdUnit.CurrentSetting.TachyBound 
+                + TACHYCARDIA_RATE) then
                for I in Integer range 1..SIGNAL_NUMBER loop
                     ImpulseGenerator.SetImpulse(Gen, SIGNAL_JOULES);
                end loop;
@@ -141,12 +149,14 @@ package body ICD is
 
             -- check if the patient has ventricle fibrillation at this moment
             if (IsVentricleFibrillation(IcdUnit)) then
-                ImpulseGenerator.SetImpulse(Gen, IcdUnit.CurrentSetting.JoulesToDeliver);
+                ImpulseGenerator.SetImpulse(Gen, 
+                                    IcdUnit.CurrentSetting.JoulesToDeliver);
             end if;
         end if;
     end Tick;
 
-    function CheckAuthorisation(IcdUnit : in ICDType; Prin : Principal.PrincipalPtr; Role : Principal.Role) return Boolean is
+    function CheckAuthorisation(IcdUnit : in ICDType; 
+    Prin : Principal.PrincipalPtr; Role : Principal.Role) return Boolean is
         Authorised : Boolean := False;
     begin
         if (Principal.HasRole(Prin.all, Role)) then
@@ -169,9 +179,11 @@ package body ICD is
         else
             for I in IcdUnit.History'Range loop
                 if (I = 1) then
-                    TotalChange := abs (IcdUnit.History(I).Rate - IcdUnit.ZeroHistory.Rate);
+                    TotalChange := abs (IcdUnit.History(I).Rate - 
+                                        IcdUnit.ZeroHistory.Rate);
                 else
-                    TotalChange := TotalChange + abs (IcdUnit.History(I).Rate - IcdUnit.History(I-1).Rate);
+                    TotalChange := TotalChange + abs (IcdUnit.History(I).Rate
+                                                 - IcdUnit.History(I-1).Rate);
                 end if;
             end loop;
             AverageChange := TotalChange / 6;
@@ -184,7 +196,8 @@ package body ICD is
         end if;
     end IsVentricleFibrillation;
 
-    procedure AppendHistory(IcdUnit : in out ICDType; RecordRate : in Network.RateRecord) is
+    procedure AppendHistory(IcdUnit : in out ICDType; 
+    RecordRate : in Network.RateRecord) is
     begin
         if (IcdUnit.HistoryPos <= IcdUnit.History'Last) then
             IcdUnit.History(IcdUnit.HistoryPos) := RecordRate;
