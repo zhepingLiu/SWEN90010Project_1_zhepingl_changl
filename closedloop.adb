@@ -50,6 +50,8 @@ package body ClosedLoop is
         MsgAvailable : Boolean := False;
         -- stores the current message read from the network (if one was available)
         Msg : Network.NetworkMessage;
+        -- stores the current message response from the ICD
+        Response : Network.NetworkMessage;
 
     begin
         -- ICD Tick (included Generator Tick if needed)
@@ -65,8 +67,10 @@ package body ClosedLoop is
         -- and send them into the ICD unit
         Network.GetNewMessage(Net, MsgAvailable, Msg);
         if MsgAvailable then
-            ICD.Request(Msg);
+            Network.SendMessage(Net, Msg);
+            Response := ICD.Request(IcdUnit, Msg, Hrt);
+            Network.DebugPrintMessage(Response);
         end if;
-        
+
     end Tick;
 end ClosedLoop;

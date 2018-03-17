@@ -61,22 +61,23 @@ package body ICD is
     end Off;
 
     function Request(IcdUnit : in out ICDType; 
-    Command : in Network.NetworkMessage; Hrt : in Heart.HeartType;
-    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+    Command : in Network.NetworkMessage;
+    Hrt : in Heart.HeartType) return Network.NetworkMessage is
         Response : Network.NetworkMessage;
     begin
         case Command.MessageType is
             when ReadRateHistoryRequest =>
-                return ReadRateHistoryResponse(IcdUnit, Prin);
+                return ReadRateHistoryResponse(IcdUnit, Command.HSource);
             when ReadSettingsRequest => 
-                return ReadSettingsResponse(IcdUnit, Prin);
+                return ReadSettingsResponse(IcdUnit, Command.RSource);
             -- this is only allowed for Cardiologist
             when ChangeSettingsRequest => 
-                return ICD.ChangeSettingsResponse(IcdUnit, Prin, Command);
+                return ICD.ChangeSettingsResponse(IcdUnit, 
+                                        Command.CSource, Command);
             when ModeOn =>
-                return On(IcdUnit, Hrt, Prin);
+                return On(IcdUnit, Hrt, Command.MOnSource);
             when ModeOff =>
-                return Off(IcdUnit, Prin);
+                return Off(IcdUnit, Command.MOffSource);
             when others =>
                 -- return what message here?
                 Put_Line("ERROR: Incorrect Message");
