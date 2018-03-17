@@ -15,7 +15,8 @@ package ICD is
     SIGNAL_INTERVAL : constant Measures.TickCount := 4;
     NUMBER_PREHISTORY : constant Integer := 2;
 
-    type PreRateHistory is array (Integer range 1..2) of Network.RateRecord;
+    type PreRateHistory is array (Integer range 1..NUMBER_PREHISTORY)
+                                 of Network.RateRecord;
 
     type Setting is
     record

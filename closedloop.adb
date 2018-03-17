@@ -43,7 +43,6 @@ package body ClosedLoop is
         HRM.Init(Monitor);
         ImpulseGenerator.Init(Gen);
         ICD.Init(IcdUnit, Monitor, Hrt, Gen, Net, KnownPrincipals);
-
         CurrentTime := 0;
     end Init;
 
