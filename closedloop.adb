@@ -1,7 +1,7 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 with Principal;
-with Network;
+with Network; use Network;
 with ICD;
 with HRM;
 with Measures; use Measures;
@@ -56,7 +56,6 @@ package body ClosedLoop is
         Response : Network.NetworkMessage;
 
     begin
-
         -- HeartMonitor Tick
         HRM.Tick(Monitor, Hrt);
 
@@ -73,9 +72,37 @@ package body ClosedLoop is
         -- and send them into the ICD unit
         Network.GetNewMessage(Net, MsgAvailable, Msg);
         if MsgAvailable then
-            -- Network.SendMessage(Net, Msg);
-            Response := ICD.Request(IcdUnit, Msg, Hrt);
-            -- Network.DebugPrintMessage(Response);
+            Network.SendMessage(Net, Msg);
+            case Msg.MessageType is
+                when ReadRateHistoryRequest =>
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.HSource, Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.HSource, Principal.Cardiologist) then
+                        Response := ICD.ReadRateHistoryResponse(IcdUnit, Msg.HSource);
+                    end if;
+                when ReadSettingsRequest => 
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.RSource, Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.RSource, Principal.Cardiologist) then
+                        Response := ICD.ReadSettingsResponse(IcdUnit, Msg.RSource);
+                    end if;
+                when ChangeSettingsRequest => 
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.CSource, Principal.Cardiologist) then
+                        Response := ICD.ChangeSettingsResponse(IcdUnit, 
+                                        Msg.CSource, Msg);
+                    end if;
+                when ModeOn =>
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, Principal.Cardiologist) then
+                        Response := ICD.On(IcdUnit, Hrt, Msg.MOnSource);
+                    end if;
+                when ModeOff =>
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, Principal.Cardiologist) then
+                        Response := ICD.Off(IcdUnit, Msg.MOffSource);
+                    end if;
+                when others =>
+                    Put_Line("ERROR: Incorrect Message Type");
+            end case;
+            Network.DebugPrintMessage(Response);
         end if;
 
         -- increment the current time

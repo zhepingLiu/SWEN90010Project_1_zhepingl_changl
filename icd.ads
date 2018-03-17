@@ -53,8 +53,6 @@ package ICD is
     procedure Tick(IcdUnit : in out ICDType; Hrt : in out Heart.HeartType;
     CurrentTime : Measures.TickCount);
 
-private
-
     procedure AppendHistory(IcdUnit : in out ICDType; 
     RecordRate : in Network.RateRecord);
 
