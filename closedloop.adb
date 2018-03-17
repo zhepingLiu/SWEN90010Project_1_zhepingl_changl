@@ -54,15 +54,6 @@ package body ClosedLoop is
         Response : Network.NetworkMessage;
 
     begin
-        -- ICD Tick (included Generator Tick if needed)
-        ICD.Tick(IcdUnit, Hrt, CurrentTime);
-        -- HRM Tick
-        HRM.Tick(Monitor, Hrt);
-        -- Heart Tick
-        Heart.Tick(Hrt);
-        -- Network Tick
-        Network.Tick(Net);
-
         -- Receive the messages from the network
         -- and send them into the ICD unit
         Network.GetNewMessage(Net, MsgAvailable, Msg);
@@ -71,5 +62,18 @@ package body ClosedLoop is
             Response := ICD.Request(IcdUnit, Msg, Hrt);
         end if;
 
+        -- HeartMonitor Tick
+        HRM.Tick(Monitor, Hrt);
+
+        -- Heart Tick
+        Heart.Tick(Hrt);
+
+        -- NetWork Tick
+        Network.Tick(Net);
+
+        -- ICD Tick (included Generator Tick if needed)
+        ICD.Tick(IcdUnit, Hrt, CurrentTime);
+
     end Tick;
+
 end ClosedLoop;
