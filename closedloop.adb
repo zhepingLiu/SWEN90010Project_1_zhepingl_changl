@@ -60,6 +60,7 @@ package body ClosedLoop is
         if MsgAvailable then
             Network.SendMessage(Net, Msg);
             Response := ICD.Request(IcdUnit, Msg, Hrt);
+            Network.DebugPrintMessage(Response);
         end if;
 
         -- HeartMonitor Tick
