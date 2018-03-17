@@ -26,9 +26,9 @@ package body ClosedLoop is
         ClinicalAssistant := new Principal.Principal;
 
         Principal.InitPrincipalForRole(Patient.all, Principal.Patient);
-        Principal.InitPrincipalForRole(Cardiologist.all, 
+        Principal.InitPrincipalForRole(Cardiologist.all,
                                         Principal.Cardiologist);
-        Principal.InitPrincipalForRole(ClinicalAssistant.all, 
+        Principal.InitPrincipalForRole(ClinicalAssistant.all,
                                         Principal.ClinicalAssistant);
 
         KnownPrincipals := new Network.PrincipalArray(0..2);
@@ -63,13 +63,12 @@ package body ClosedLoop is
         -- Network Tick
         Network.Tick(Net);
 
-        -- Receive the messages from the network 
+        -- Receive the messages from the network
         -- and send them into the ICD unit
         Network.GetNewMessage(Net, MsgAvailable, Msg);
         if MsgAvailable then
             Network.SendMessage(Net, Msg);
             Response := ICD.Request(IcdUnit, Msg, Hrt);
-            Network.DebugPrintMessage(Response);
         end if;
 
     end Tick;
