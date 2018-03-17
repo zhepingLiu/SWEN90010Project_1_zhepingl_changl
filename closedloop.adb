@@ -1,3 +1,5 @@
+with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 with Principal;
 with Network;
 with ICD;
@@ -54,14 +56,6 @@ package body ClosedLoop is
         Response : Network.NetworkMessage;
 
     begin
-        -- Receive the messages from the network
-        -- and send them into the ICD unit
-        Network.GetNewMessage(Net, MsgAvailable, Msg);
-        if MsgAvailable then
-            Network.SendMessage(Net, Msg);
-            Response := ICD.Request(IcdUnit, Msg, Hrt);
-            Network.DebugPrintMessage(Response);
-        end if;
 
         -- HeartMonitor Tick
         HRM.Tick(Monitor, Hrt);
@@ -74,6 +68,18 @@ package body ClosedLoop is
 
         -- ICD Tick (included Generator Tick if needed)
         ICD.Tick(IcdUnit, Hrt, CurrentTime);
+
+        -- Receive the messages from the network
+        -- and send them into the ICD unit
+        Network.GetNewMessage(Net, MsgAvailable, Msg);
+        if MsgAvailable then
+            -- Network.SendMessage(Net, Msg);
+            Response := ICD.Request(IcdUnit, Msg, Hrt);
+            -- Network.DebugPrintMessage(Response);
+        end if;
+
+        -- increment the current time
+        CurrentTime := CurrentTime + 1;
 
     end Tick;
 

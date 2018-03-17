@@ -1,4 +1,5 @@
 with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 with Principal; use Principal;
 with HRM;
 with ImpulseGenerator;
@@ -56,6 +57,7 @@ package body ICD is
             HRM.Off(IcdUnit.Monitor);
             ImpulseGenerator.Off(IcdUnit.Gen);
             Response.MOffSource := Prin;
+            return Response;
         end if;
         return Response;
     end Off;
@@ -63,7 +65,7 @@ package body ICD is
     function Request(IcdUnit : in out ICDType; 
     Command : in Network.NetworkMessage;
     Hrt : in Heart.HeartType) return Network.NetworkMessage is
-        Response : Network.NetworkMessage;
+        ErrorResponse : Network.NetworkMessage;
     begin
         case Command.MessageType is
             when ReadRateHistoryRequest =>
@@ -81,13 +83,14 @@ package body ICD is
             when others =>
                 -- return what message here?
                 Put_Line("ERROR: Incorrect Message");
-                return Response;
+                return ErrorResponse;
         end case;
     end Request;
 
     function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; 
     Prin : Principal.PrincipalPtr) return Network.NetworkMessage is 
-        Response : NetworkMessage(ReadRateHistoryResponse);
+        Response : Network.NetworkMessage(ReadRateHistoryResponse);
+        ErrorResponse : Network.NetworkMessage;
     begin
         if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
         OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
@@ -95,13 +98,15 @@ package body ICD is
             Response.HDestination := Prin;
             -- read the history for 5 recent heart rate and time
             Response.History := IcdUnit.History;
+            return Response;
         end if;
-        return Response;
+        return ErrorResponse;
     end ReadRateHistoryResponse;
 
     function ReadSettingsResponse(IcdUnit : in ICD.ICDType; 
     Prin : Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : NetworkMessage(ReadSettingsResponse);
+        ErrorResponse : Network.NetworkMessage;
     begin
         if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
         OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
@@ -109,22 +114,25 @@ package body ICD is
             Response.RTachyBound := IcdUnit.CurrentSetting.TachyBound;
             Response.RJoulesToDeliver := 
                                 IcdUnit.CurrentSetting.JoulesToDeliver;
+            return Response;
         end if;
-        return Response;
+        return ErrorResponse;
     end ReadSettingsResponse;
 
     function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType;
     Prin : Principal.PrincipalPtr;
     Request : in Network.NetworkMessage) return Network.NetworkMessage is
         Response : NetworkMessage(ChangeSettingsResponse);
+        ErrorResponse : Network.NetworkMessage;
     begin
         if CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
             Response.CDestination := Prin;
             -- modify the settings here
             IcdUnit.CurrentSetting.TachyBound := Request.CTachyBound;
             IcdUnit.CurrentSetting.JoulesToDeliver := Request.CJoulesToDeliver;
+            return Response;
         end if;
-        return Response;
+        return ErrorResponse;
     end ChangeSettingsResponse;
 
     procedure Tick(IcdUnit : in out ICDType; Hrt : in out Heart.HeartType;
@@ -141,17 +149,15 @@ package body ICD is
             -- check if the patient has tachycardia at this moment
             if (RecordRate.Rate >= IcdUnit.CurrentSetting.TachyBound 
                 + TACHYCARDIA_RATE OR IcdUnit.IsTachycardia) then
-                if (IcdUnit.TachyCount = 0) then
 
+                if (IcdUnit.TachyCount = 0) then
                     IcdUnit.ShotTime := CurrentTime + ICD.SIGNAL_INTERVAL;
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
                     ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
                     IcdUnit.IsTachycardia := True;
 
-                elsif (IcdUnit.TachyCount < 10 AND 
-                        CurrentTime = IcdUnit.ShotTime) then
-
+                elsif (IcdUnit.TachyCount < 10 AND CurrentTime = IcdUnit.ShotTime) then
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
                     ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
@@ -162,11 +168,13 @@ package body ICD is
                 if (IcdUnit.TachyCount = 10) then
                     IcdUnit.TachyCount := 0;
                     IcdUnit.IsTachycardia := False;
+                    Put_Line("Tachycardia 3: " & Integer'Image(IcdUnit.TachyCount));
                 end if;
             end if;
 
             -- check if the patient has ventricle fibrillation at this moment
             if (IsVentricleFibrillation(IcdUnit)) then
+                -- Put_Line("Ventricle Fibrillation.");
                 ImpulseGenerator.SetImpulse(IcdUnit.Gen, 
                         IcdUnit.CurrentSetting.JoulesToDeliver);
                 ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
@@ -191,7 +199,7 @@ package body ICD is
     function IsVentricleFibrillation(IcdUnit : in ICDType) return Boolean is
         TotalChange : Integer := 0;
         AverageChange : Integer;
-        I : Integer := 0;
+        I : Integer := 1;
         LoopRange : Integer;
     begin
         LoopRange := IcdUnit.History'Last + NUMBER_PREHISTORY;
