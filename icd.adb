@@ -126,7 +126,7 @@ package body ICD is
         return Response;
     end ChangeSettingsResponse;
 
-    procedure Tick(IcdUnit : in out ICDType; 
+    procedure Tick(IcdUnit : in out ICDType; Hrt : in out Heart.HeartType;
     CurrentTime : Measures.TickCount) is
         RecordRate : Network.RateRecord;
     begin
@@ -141,15 +141,21 @@ package body ICD is
             if (RecordRate.Rate >= IcdUnit.CurrentSetting.TachyBound 
                 + TACHYCARDIA_RATE OR IcdUnit.IsTachycardia) then
                 if (IcdUnit.TachyCount = 0) then
+
                     IcdUnit.ShotTime := CurrentTime + ICD.SIGNAL_INTERVAL;
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
+                    ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
                     IcdUnit.IsTachycardia := True;
+
                 elsif (IcdUnit.TachyCount < 10 AND 
                         CurrentTime = IcdUnit.ShotTime) then
+
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
+                    ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
                     IcdUnit.ShotTime := IcdUnit.ShotTime + ICD.SIGNAL_INTERVAL;
+
                 end if;
 
                 if (IcdUnit.TachyCount = 10) then
@@ -161,7 +167,8 @@ package body ICD is
             -- check if the patient has ventricle fibrillation at this moment
             if (IsVentricleFibrillation(IcdUnit)) then
                 ImpulseGenerator.SetImpulse(IcdUnit.Gen, 
-                                    IcdUnit.CurrentSetting.JoulesToDeliver);
+                        IcdUnit.CurrentSetting.JoulesToDeliver);
+                ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
             end if;
         end if;
     end Tick;

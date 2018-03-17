@@ -50,7 +50,7 @@ package ICD is
     Command : in Network.NetworkMessage; Hrt : in Heart.HeartType;
     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage;
 
-    procedure Tick(IcdUnit : in out ICDType; 
+    procedure Tick(IcdUnit : in out ICDType; Hrt : in out Heart.HeartType;
     CurrentTime : Measures.TickCount);
 
 private
