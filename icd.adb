@@ -23,6 +23,7 @@ package body ICD is
         IcdUnit.CurrentSetting.JoulesToDeliver := INITIAL_JOULES_TO_DELIVER;
 
         IcdUnit.TachyCount := 0;
+        IcdUnit.IsTachycardia := False;
     end Init;
 
     function On(IcdUnit : in out ICDType; Hrt : Heart.HeartType;
@@ -138,11 +139,12 @@ package body ICD is
 
             -- check if the patient has tachycardia at this moment
             if (RecordRate.Rate >= IcdUnit.CurrentSetting.TachyBound 
-                + TACHYCARDIA_RATE) then
-                if (IcdUnit.TachyCount = 1) then
+                + TACHYCARDIA_RATE OR IcdUnit.IsTachycardia) then
+                if (IcdUnit.TachyCount = 0) then
                     IcdUnit.ShotTime := CurrentTime + ICD.SIGNAL_INTERVAL;
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
+                    IcdUnit.IsTachycardia := True;
                 elsif (IcdUnit.TachyCount < 10 AND 
                         CurrentTime = IcdUnit.ShotTime) then
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
@@ -152,6 +154,7 @@ package body ICD is
 
                 if (IcdUnit.TachyCount = 10) then
                     IcdUnit.TachyCount := 0;
+                    IcdUnit.IsTachycardia := False;
                 end if;
             end if;
 

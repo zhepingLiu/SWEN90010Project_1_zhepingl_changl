@@ -38,6 +38,7 @@ package ICD is
         HistoryPos : Integer;
 
         TachyCount : Integer;
+        IsTachycardia : Boolean;
         ShotTime : Measures.TickCount;
     end record;
 

@@ -8,20 +8,18 @@ with ImpulseGenerator;
 
 package body ClosedLoop is
 
+    Patient : Principal.PrincipalPtr;
+    Cardiologist : Principal.PrincipalPtr;
+    ClinicalAssistant : Principal.PrincipalPtr;
+    KnownPrincipals : access Network.PrincipalArray;
+    Net : Network.Network;
+    Hrt : Heart.HeartType;
+    Monitor : HRM.HRMType;
+    Gen : ImpulseGenerator.GeneratorType;
+    IcdUnit : ICD.ICDType;
+    CurrentTime : Measures.TickCount;
+
     procedure Init is
-        Patient : Principal.PrincipalPtr;
-        Cardiologist : Principal.PrincipalPtr;
-        ClinicalAssistant : Principal.PrincipalPtr;
-
-        Net : Network.Network;
-        KnownPrincipals : access Network.PrincipalArray;
-
-        Hrt : Heart.HeartType;
-        Monitor : HRM.HRMType;
-        Gen : ImpulseGenerator.GeneratorType;
-        IcdUnit : ICD.ICDType;
-
-        CurrentTime : Measures.TickCount;
     begin
         Patient := new Principal.Principal;
         Cardiologist := new Principal.Principal;
@@ -42,13 +40,12 @@ package body ClosedLoop is
         Heart.Init(Hrt);
         HRM.Init(Monitor);
         ImpulseGenerator.Init(Gen);
-        ICD.Init(IcdUnit, Monitor, Hrt, Gen, Net, KnownPrincipals);
+        ICD.Init(IcdUnit, Monitor, Gen, Net, KnownPrincipals);
         CurrentTime := 0;
     end Init;
 
     procedure Tick is
     begin
-        -- TODO Not implemented
-        Init;
+        ICD.Tick(IcdUnit, CurrentTime);
     end Tick;
 end ClosedLoop;
