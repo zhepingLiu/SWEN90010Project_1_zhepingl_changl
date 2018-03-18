@@ -38,7 +38,9 @@ package ICD is
         HistoryPos : Integer;
 
         TachyCount : Integer;
+        TachycardiaDetectedRate : Measures.BPM;
         IsTachycardia : Boolean;
+        InTreatment : Boolean;
         ShotTime : Measures.TickCount;
     end record;
 
