@@ -50,7 +50,8 @@ package body ClosedLoop is
 
         -- stores whether there was a message available on the network
         MsgAvailable : Boolean := False;
-        -- stores the current message read from the network (if one was available)
+        -- stores the current message read from the network 
+        -- (if one was available)
         Msg : Network.NetworkMessage;
         -- stores the current message response from the ICD
         Response : Network.NetworkMessage;
@@ -75,28 +76,39 @@ package body ClosedLoop is
             Network.SendMessage(Net, Msg);
             case Msg.MessageType is
                 when ReadRateHistoryRequest =>
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.HSource, Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.HSource, Principal.Cardiologist) then
-                        Response := ICD.ReadRateHistoryResponse(IcdUnit, Msg.HSource);
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.HSource, 
+                                                Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.HSource, 
+                                                Principal.Cardiologist) then
+                        Response := ICD.ReadRateHistoryResponse(IcdUnit, 
+                                                Msg.HSource);
                     end if;
                 when ReadSettingsRequest => 
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.RSource, Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.RSource, Principal.Cardiologist) then
-                        Response := ICD.ReadSettingsResponse(IcdUnit, Msg.RSource);
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.RSource, 
+                                                Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.RSource, 
+                                                Principal.Cardiologist) then
+                        Response := ICD.ReadSettingsResponse(IcdUnit, 
+                                                Msg.RSource);
                     end if;
                 when ChangeSettingsRequest => 
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.CSource, Principal.Cardiologist) then
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.CSource, 
+                                                Principal.Cardiologist) then
                         Response := ICD.ChangeSettingsResponse(IcdUnit, 
                                         Msg.CSource, Msg);
                     end if;
                 when ModeOn =>
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, Principal.Cardiologist) then
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
+                                                Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
+                                                Principal.Cardiologist) then
                         Response := ICD.On(IcdUnit, Hrt, Msg.MOnSource);
                     end if;
                 when ModeOff =>
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, Principal.Cardiologist) then
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                                                Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                                                Principal.Cardiologist) then
                         Response := ICD.Off(IcdUnit, Msg.MOffSource);
                     end if;
                 when others =>

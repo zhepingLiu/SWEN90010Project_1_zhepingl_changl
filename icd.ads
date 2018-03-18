@@ -46,10 +46,6 @@ package ICD is
     Gen : in ImpulseGenerator.GeneratorType; 
     Net : in Network.Network; KnownPrincipals : access Network.PrincipalArray);
 
-    function Request(IcdUnit : in out ICDType; 
-    Command : in Network.NetworkMessage; 
-    Hrt : in Heart.HeartType) return Network.NetworkMessage;
-
     procedure Tick(IcdUnit : in out ICDType; Hrt : in out Heart.HeartType;
     CurrentTime : Measures.TickCount);
 

@@ -31,108 +31,60 @@ package body ICD is
     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOn);
     begin
-        -- check the principal of the operator
-        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
-        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
-            -- turn on the ICD unit
-            IcdUnit.IsOn := True;
-            -- turn on the HRM (need to pass the Hrt in)
-            HRM.On(IcdUnit.Monitor, Hrt);
-            -- turn on the Impulse Generator
-            ImpulseGenerator.On(IcdUnit.Gen);
-            -- set the source of the response message
-            Response.MOnSource := Prin;
-        end if;
+        -- turn on the ICD unit
+        IcdUnit.IsOn := True;
+        -- turn on the HRM (need to pass the Hrt in)
+        HRM.On(IcdUnit.Monitor, Hrt);
+        -- turn on the Impulse Generator
+        ImpulseGenerator.On(IcdUnit.Gen);
+        -- set the source of the response message
+        Response.MOnSource := Prin;
         return Response;
     end On;
 
-    function Off(IcdUnit : in out ICDType; 
-    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
+    function Off(IcdUnit : in out ICDType; Prin : in Principal.PrincipalPtr)
+    return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOff);
     begin
-        -- check the principal of the operator
-        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
-        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
-            IcdUnit.IsOn := False;
-            HRM.Off(IcdUnit.Monitor);
-            ImpulseGenerator.Off(IcdUnit.Gen);
-            Response.MOffSource := Prin;
-            return Response;
-        end if;
+        IcdUnit.IsOn := False;
+        HRM.Off(IcdUnit.Monitor);
+        ImpulseGenerator.Off(IcdUnit.Gen);
+        Response.MOffSource := Prin;
         return Response;
     end Off;
 
-    function Request(IcdUnit : in out ICDType; 
-    Command : in Network.NetworkMessage;
-    Hrt : in Heart.HeartType) return Network.NetworkMessage is
-        ErrorResponse : Network.NetworkMessage;
-    begin
-        case Command.MessageType is
-            when ReadRateHistoryRequest =>
-                return ReadRateHistoryResponse(IcdUnit, Command.HSource);
-            when ReadSettingsRequest => 
-                return ReadSettingsResponse(IcdUnit, Command.RSource);
-            -- this is only allowed for Cardiologist
-            when ChangeSettingsRequest => 
-                return ICD.ChangeSettingsResponse(IcdUnit, 
-                                        Command.CSource, Command);
-            when ModeOn =>
-                return On(IcdUnit, Hrt, Command.MOnSource);
-            when ModeOff =>
-                return Off(IcdUnit, Command.MOffSource);
-            when others =>
-                -- return what message here?
-                Put_Line("ERROR: Incorrect Message");
-                return ErrorResponse;
-        end case;
-    end Request;
-
     function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; 
-    Prin : Principal.PrincipalPtr) return Network.NetworkMessage is 
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is 
         Response : Network.NetworkMessage(ReadRateHistoryResponse);
-        ErrorResponse : Network.NetworkMessage;
     begin
-        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
-        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
-            -- read the source of the message
-            Response.HDestination := Prin;
-            -- read the history for 5 recent heart rate and time
-            Response.History := IcdUnit.History;
-            return Response;
-        end if;
-        return ErrorResponse;
+        -- read the source of the message
+        Response.HDestination := Prin;
+        -- read the history for 5 recent heart rate and time
+        Response.History := IcdUnit.History;
+        return Response;
     end ReadRateHistoryResponse;
 
     function ReadSettingsResponse(IcdUnit : in ICD.ICDType; 
-    Prin : Principal.PrincipalPtr) return Network.NetworkMessage is
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : NetworkMessage(ReadSettingsResponse);
-        ErrorResponse : Network.NetworkMessage;
     begin
-        if CheckAuthorisation(IcdUnit, Prin, ClinicalAssistant)
-        OR CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
-            Response.RDestination := Prin;
-            Response.RTachyBound := IcdUnit.CurrentSetting.TachyBound;
-            Response.RJoulesToDeliver := 
-                                IcdUnit.CurrentSetting.JoulesToDeliver;
-            return Response;
-        end if;
-        return ErrorResponse;
+        Response.RDestination := Prin;
+        Response.RTachyBound := IcdUnit.CurrentSetting.TachyBound;
+        Response.RJoulesToDeliver := 
+                            IcdUnit.CurrentSetting.JoulesToDeliver;
+        return Response;
     end ReadSettingsResponse;
 
     function ChangeSettingsResponse(IcdUnit : in out ICD.ICDType;
-    Prin : Principal.PrincipalPtr;
+    Prin : in Principal.PrincipalPtr;
     Request : in Network.NetworkMessage) return Network.NetworkMessage is
         Response : NetworkMessage(ChangeSettingsResponse);
-        ErrorResponse : Network.NetworkMessage;
     begin
-        if CheckAuthorisation(IcdUnit, Prin, Cardiologist) then
-            Response.CDestination := Prin;
-            -- modify the settings here
-            IcdUnit.CurrentSetting.TachyBound := Request.CTachyBound;
-            IcdUnit.CurrentSetting.JoulesToDeliver := Request.CJoulesToDeliver;
-            return Response;
-        end if;
-        return ErrorResponse;
+        Response.CDestination := Prin;
+        -- modify the settings here
+        IcdUnit.CurrentSetting.TachyBound := Request.CTachyBound;
+        IcdUnit.CurrentSetting.JoulesToDeliver := Request.CJoulesToDeliver;
+        return Response;
     end ChangeSettingsResponse;
 
     procedure Tick(IcdUnit : in out ICDType; Hrt : in out Heart.HeartType;
@@ -157,7 +109,8 @@ package body ICD is
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
                     IcdUnit.IsTachycardia := True;
 
-                elsif (IcdUnit.TachyCount < 10 AND CurrentTime = IcdUnit.ShotTime) then
+                elsif (IcdUnit.TachyCount < 10 AND 
+                        CurrentTime = IcdUnit.ShotTime) then
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
                     ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
@@ -168,7 +121,8 @@ package body ICD is
                 if (IcdUnit.TachyCount = 10) then
                     IcdUnit.TachyCount := 0;
                     IcdUnit.IsTachycardia := False;
-                    Put_Line("Tachycardia 3: " & Integer'Image(IcdUnit.TachyCount));
+                    Put_Line("Tachycardia 3: " & 
+                                Integer'Image(IcdUnit.TachyCount));
                 end if;
             end if;
 
