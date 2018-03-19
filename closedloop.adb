@@ -1,5 +1,7 @@
+with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 with Principal;
-with Network;
+with Network; use Network;
 with ICD;
 with HRM;
 with Measures; use Measures;
@@ -40,7 +42,7 @@ package body ClosedLoop is
         Heart.Init(Hrt);
         HRM.Init(Monitor);
         ImpulseGenerator.Init(Gen);
-        ICD.Init(IcdUnit, Monitor, Gen, Net, KnownPrincipals);
+        ICD.Init(IcdUnit, Monitor, Gen, KnownPrincipals);
         CurrentTime := 0;
     end Init;
 
@@ -48,33 +50,72 @@ package body ClosedLoop is
 
         -- stores whether there was a message available on the network
         MsgAvailable : Boolean := False;
-        -- stores the current message read from the network (if one was available)
+        -- stores the current message read from the network 
+        -- (if one was available)
         Msg : Network.NetworkMessage;
         -- stores the current message response from the ICD
         Response : Network.NetworkMessage;
 
     begin
+        -- Heart Tick
+        Heart.Tick(Hrt);
+        -- ICD Tick (included Generator Tick if needed)
+        ICD.Tick(IcdUnit, Hrt, CurrentTime);
+        -- NetWork Tick
+        Network.Tick(Net);
+
         -- Receive the messages from the network
         -- and send them into the ICD unit
         Network.GetNewMessage(Net, MsgAvailable, Msg);
         if MsgAvailable then
             Network.SendMessage(Net, Msg);
-            Response := ICD.Request(IcdUnit, Msg, Hrt);
+            case Msg.MessageType is
+                when ReadRateHistoryRequest =>
+                    if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, 
+                    Msg.HSource, Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.HSource, 
+                                                Principal.Cardiologist)) then
+                        Response := ICD.ReadRateHistoryResponse(IcdUnit, 
+                                                Msg.HSource);
+                    end if;
+                when ReadSettingsRequest => 
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.RSource, 
+                                                Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.RSource, 
+                                                Principal.Cardiologist) then
+                        Response := ICD.ReadSettingsResponse(IcdUnit, 
+                                                Msg.RSource);
+                    end if;
+                when ChangeSettingsRequest => 
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.CSource, 
+                                                Principal.Cardiologist) then
+                        Response := ICD.ChangeSettingsResponse(IcdUnit, 
+                                        Msg.CSource, Msg);
+                    end if;
+                when ModeOn =>
+                    if not IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
+                                                Principal.ClinicalAssistant)
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
+                                                Principal.Cardiologist)) then
+                        Response := ICD.On(IcdUnit, Hrt, Msg.MOnSource);
+                    end if;
+                --when ModeOff =>
+                    --if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                      --                          Principal.ClinicalAssistant)
+                    --OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                        --                        Principal.Cardiologist)) then
+                        -- Response := ICD.Off(IcdUnit, Msg.MOffSource);
+
+                    --end if;
+                when others =>
+                    Put_Line("ERROR: Incorrect Message Type");
+            end case;
             Network.DebugPrintMessage(Response);
         end if;
 
-        -- HeartMonitor Tick
-        HRM.Tick(Monitor, Hrt);
-
-        -- Heart Tick
-        Heart.Tick(Hrt);
-
-        -- NetWork Tick
-        Network.Tick(Net);
-
-        -- ICD Tick (included Generator Tick if needed)
-        ICD.Tick(IcdUnit, Hrt, CurrentTime);
-
+        -- increment the current time
+        CurrentTime := CurrentTime + 1;
+        -- delay 0.1;
     end Tick;
 
 end ClosedLoop;
