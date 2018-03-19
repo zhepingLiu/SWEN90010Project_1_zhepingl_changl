@@ -93,19 +93,20 @@ package body ClosedLoop is
                                         Msg.CSource, Msg);
                     end if;
                 when ModeOn =>
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
+                    if not IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
                                                 Principal.ClinicalAssistant)
                     OR ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
-                                                Principal.Cardiologist) then
+                                                Principal.Cardiologist)) then
                         Response := ICD.On(IcdUnit, Hrt, Msg.MOnSource);
                     end if;
-                when ModeOff =>
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
-                                                Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
-                                                Principal.Cardiologist) then
-                        Response := ICD.Off(IcdUnit, Msg.MOffSource);
-                    end if;
+                --when ModeOff =>
+                    --if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                      --                          Principal.ClinicalAssistant)
+                    --OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                        --                        Principal.Cardiologist)) then
+                        -- Response := ICD.Off(IcdUnit, Msg.MOffSource);
+
+                    --end if;
                 when others =>
                     Put_Line("ERROR: Incorrect Message Type");
             end case;

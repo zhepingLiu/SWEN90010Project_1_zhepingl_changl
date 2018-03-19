@@ -106,21 +106,27 @@ package body ICD is
             
             Put_Line("Current Rate is " & Integer'Image(RecordRate.Rate));
 
+            -- set the impulse generator to deliver zero joules when 
+            -- no problem in heart is detected
+            ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
+
             -- append the record into History
             AppendHistory(IcdUnit, RecordRate);
 
-            if (IcdUnit.IsTachycardia OR RecordRate.Rate >= 
+            -- check if the patient has ventricle fibrillation at this moment
+            if (IsVentricleFibrillation(IcdUnit)) then
+                Put_Line("Ventricle Fibrillation Detected.");
+                ImpulseGenerator.SetImpulse(IcdUnit.Gen, 
+                        IcdUnit.CurrentSetting.JoulesToDeliver);
+            elsif (IcdUnit.IsTachycardia OR RecordRate.Rate >= 
                         IcdUnit.CurrentSetting.TachyBound) then
                 if (IcdUnit.TachyCount = 0) then
                     -- Set the impulse joules to signal joules
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
-                    -- Tick the generator to impact the heart
-                    ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
-                    -- Set back the impulse to zero joules
-                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
 
                     Put_Line("Tachycardia is detected at " & Integer'Image(RecordRate.Rate));
+
                     IcdUnit.IsTachycardia := True;
                     IcdUnit.ShotInterval := TOTAL_TICKS_MINUTE / 
                                     (RecordRate.Rate + TACHYCARDIA_RATE);
@@ -131,10 +137,6 @@ package body ICD is
                         Integer(CurrentTime) = IcdUnit.ShotTime) then
                     -- Set the impulse joules to signal joules
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
-                    -- Tick the generator to impact the heart
-                    ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
-                    -- Set back the impulse to zero joules
-                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
                     
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
                     IcdUnit.ShotTime := IcdUnit.ShotTime + 
@@ -147,17 +149,11 @@ package body ICD is
                 IcdUnit.TachyCount := 0;
                 IcdUnit.IsTachycardia := False;
             end if;
-
-            -- check if the patient has ventricle fibrillation at this moment
-            if (IsVentricleFibrillation(IcdUnit)) then
-                Put_Line("Ventricle Fibrillation Detected.");
-                ImpulseGenerator.SetImpulse(IcdUnit.Gen, 
-                        IcdUnit.CurrentSetting.JoulesToDeliver);
-                ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
-                -- Set back the impulse to zero joules
-                ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
-            end if;
         end if;
+
+        -- Tick the generator to impact the heart
+        ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
+
     end Tick;
 
     function CheckAuthorisation(IcdUnit : in ICDType; 
