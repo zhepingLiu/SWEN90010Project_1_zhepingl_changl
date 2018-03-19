@@ -76,4 +76,6 @@ package ICD is
     Prin : in Principal.PrincipalPtr; 
     Request : in Network.NetworkMessage) return Network.NetworkMessage;
 
+    procedure ResetHistory(IcdUnit : in out ICDType);
+
 end ICD;

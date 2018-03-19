@@ -37,6 +37,7 @@ package body ICD is
         Response.MOnSource := Prin;
         -- reset the history when restart the ICD
         IcdUnit.HistoryPos := IcdUnit.History'First;
+        ICD.ResetHistory(IcdUnit);
         -- reset the tachy count and isTachycardia when restart the ICD
         IcdUnit.TachyCount := 0;
         IcdUnit.IsTachycardia := False;
@@ -208,7 +209,7 @@ package body ICD is
     end IsVentricleFibrillation;
 
     procedure AppendHistory(IcdUnit : in out ICDType; 
-    RecordRate : in Network.RateRecord) is
+            RecordRate : in Network.RateRecord) is
     begin
         if (IcdUnit.HistoryPos <= IcdUnit.History'Last) then
             IcdUnit.History(IcdUnit.HistoryPos) := RecordRate;
@@ -224,4 +225,18 @@ package body ICD is
             IcdUnit.HistoryPos := IcdUnit.HistoryPos + 1;
         end if;
     end AppendHistory;
+
+    procedure ResetHistory(IcdUnit : in out ICDType) is
+        RateRecord : Network.RateRecord;
+    begin
+        RateRecord.Rate := 0;
+        RateRecord.Time := 0;
+        for I in Integer range 1..NUMBER_PREHISTORY loop
+            IcdUnit.PreHistory(I) := RateRecord;
+        end loop;
+
+        for I in Integer range 1..IcdUnit.History'Last loop
+            IcdUnit.History(I) := RateRecord;
+        end loop;
+    end ResetHistory;
 end ICD;
