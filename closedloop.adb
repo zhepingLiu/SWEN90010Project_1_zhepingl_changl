@@ -9,7 +9,7 @@ with Heart;
 with ImpulseGenerator;
 
 package body ClosedLoop is
-
+    -- initialize all types
     Patient : Principal.PrincipalPtr;
     Cardiologist : Principal.PrincipalPtr;
     ClinicalAssistant : Principal.PrincipalPtr;
@@ -23,6 +23,7 @@ package body ClosedLoop is
 
     procedure Init is
     begin
+        -- initialze all roles in principals
         Patient := new Principal.Principal;
         Cardiologist := new Principal.Principal;
         ClinicalAssistant := new Principal.Principal;
@@ -33,24 +34,29 @@ package body ClosedLoop is
         Principal.InitPrincipalForRole(ClinicalAssistant.all,
                                         Principal.ClinicalAssistant);
 
+        -- initialize all pricipals and network
         KnownPrincipals := new Network.PrincipalArray(0..2);
         KnownPrincipals(0) := Patient;
         KnownPrincipals(1) := Cardiologist;
         KnownPrincipals(2) := ClinicalAssistant;
         Network.Init(Net, KnownPrincipals);
 
+        -- initialize Heart, Heart monitor and ImpluseGenerator
         Heart.Init(Hrt);
         HRM.Init(Monitor);
         ImpulseGenerator.Init(Gen);
+
+        -- initialize ICD and currentTime
         ICD.Init(IcdUnit, Monitor, Gen, KnownPrincipals);
         CurrentTime := 0;
+
     end Init;
 
     procedure Tick is
 
         -- stores whether there was a message available on the network
         MsgAvailable : Boolean := False;
-        -- stores the current message read from the network 
+        -- stores the current message read from the network
         -- (if one was available)
         Msg : Network.NetworkMessage;
         -- stores the current message response from the ICD
@@ -70,39 +76,46 @@ package body ClosedLoop is
         if MsgAvailable then
             Network.SendMessage(Net, Msg);
             case Msg.MessageType is
+            -- Check authorisation and read history
                 when ReadRateHistoryRequest =>
-                    if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, 
+                    if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit,
                     Msg.HSource, Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.HSource, 
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.HSource,
                                                 Principal.Cardiologist)) then
-                        Response := ICD.ReadRateHistoryResponse(IcdUnit, 
+                        Response := ICD.ReadRateHistoryResponse(IcdUnit,
                                                 Msg.HSource);
                     end if;
-                when ReadSettingsRequest => 
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.RSource, 
+
+            -- Check authorisation and read current settings
+                when ReadSettingsRequest =>
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.RSource,
                                                 Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.RSource, 
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.RSource,
                                                 Principal.Cardiologist) then
-                        Response := ICD.ReadSettingsResponse(IcdUnit, 
+                        Response := ICD.ReadSettingsResponse(IcdUnit,
                                                 Msg.RSource);
                     end if;
-                when ChangeSettingsRequest => 
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.CSource, 
+
+          -- Check authorisation and change current settings
+                when ChangeSettingsRequest =>
+                    if ICD.CheckAuthorisation(IcdUnit, Msg.CSource,
                                                 Principal.Cardiologist) then
-                        Response := ICD.ChangeSettingsResponse(IcdUnit, 
+                        Response := ICD.ChangeSettingsResponse(IcdUnit,
                                         Msg.CSource, Msg);
                     end if;
+
+          -- Check authorisation and turn the mode to On
                 when ModeOn =>
-                    if not IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
+                    if not IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource,
                                                 Principal.ClinicalAssistant)
-                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource, 
+                    OR ICD.CheckAuthorisation(IcdUnit, Msg.MOnSource,
                                                 Principal.Cardiologist)) then
                         Response := ICD.On(IcdUnit, Hrt, Msg.MOnSource);
                     end if;
                 --when ModeOff =>
-                    --if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                    --if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource,
                       --                          Principal.ClinicalAssistant)
-                    --OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource, 
+                    --OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource,
                         --                        Principal.Cardiologist)) then
                         -- Response := ICD.Off(IcdUnit, Msg.MOffSource);
 

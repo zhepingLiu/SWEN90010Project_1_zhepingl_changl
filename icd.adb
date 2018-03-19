@@ -11,10 +11,11 @@ with Measures; use Measures;
 
 package body ICD is
 
-    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
+    procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType;
     Gen : in ImpulseGenerator.GeneratorType;
     KnownPrincipals : access Network.PrincipalArray) is
     begin
+        -- initialze Mode, Monitor, Generator, Principals, History in ICD
         IcdUnit.IsOn := False;
         IcdUnit.Monitor := Monitor;
         IcdUnit.Gen := Gen;
@@ -51,6 +52,7 @@ package body ICD is
     return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOff);
     begin
+        -- Turn off generator and monitor and change ICD mode variable to off
         IcdUnit.IsOn := False;
         HRM.Off(IcdUnit.Monitor);
         ImpulseGenerator.Off(IcdUnit.Gen);
@@ -58,8 +60,9 @@ package body ICD is
         return Response;
     end Off;
 
-    function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType; 
-    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is 
+    -- Read History Rate Function
+    function ReadRateHistoryResponse(IcdUnit : in ICD.ICDType;
+    Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ReadRateHistoryResponse);
     begin
         -- read the source of the message
@@ -69,13 +72,15 @@ package body ICD is
         return Response;
     end ReadRateHistoryResponse;
 
-    function ReadSettingsResponse(IcdUnit : in ICD.ICDType; 
+    -- Read Current Settings Function
+    function ReadSettingsResponse(IcdUnit : in ICD.ICDType;
     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : NetworkMessage(ReadSettingsResponse);
     begin
+        -- assign setting value to response and return response
         Response.RDestination := Prin;
         Response.RTachyBound := IcdUnit.CurrentSetting.TachyBound;
-        Response.RJoulesToDeliver := 
+        Response.RJoulesToDeliver :=
                             IcdUnit.CurrentSetting.JoulesToDeliver;
         return Response;
     end ReadSettingsResponse;
@@ -103,10 +108,10 @@ package body ICD is
             -- record the current rate and current time
             HRM.GetRate(IcdUnit.Monitor, RecordRate.Rate);
             RecordRate.Time := CurrentTime;
-            
+
             Put_Line("Current Rate is " & Integer'Image(RecordRate.Rate));
 
-            -- set the impulse generator to deliver zero joules when 
+            -- set the impulse generator to deliver zero joules when
             -- no problem in heart is detected
             ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
 
@@ -116,10 +121,14 @@ package body ICD is
             -- check if the patient has ventricle fibrillation at this moment
             if (IsVentricleFibrillation(IcdUnit)) then
                 Put_Line("Ventricle Fibrillation Detected.");
-                ImpulseGenerator.SetImpulse(IcdUnit.Gen, 
+            -- set impluse generator joules
+                ImpulseGenerator.SetImpulse(IcdUnit.Gen,
                         IcdUnit.CurrentSetting.JoulesToDeliver);
-            elsif (IcdUnit.IsTachycardia OR RecordRate.Rate >= 
+
+            -- check if there is a Tachycardia
+            elsif (IcdUnit.IsTachycardia OR RecordRate.Rate >=
                         IcdUnit.CurrentSetting.TachyBound) then
+                -- check if the tachycardia patient has never been treated before
                 if (IcdUnit.TachyCount = 0) then
                     -- Set the impulse joules to signal joules
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
@@ -128,22 +137,24 @@ package body ICD is
                     Put_Line("Tachycardia is detected at " & Integer'Image(RecordRate.Rate));
 
                     IcdUnit.IsTachycardia := True;
-                    IcdUnit.ShotInterval := TOTAL_TICKS_MINUTE / 
+                    IcdUnit.ShotInterval := TOTAL_TICKS_MINUTE /
                                     (RecordRate.Rate + TACHYCARDIA_RATE);
                     IcdUnit.ShotTime := Integer(CurrentTime) + Integer(IcdUnit.ShotInterval);
                     Put_Line("Shot Interval is " & Integer'Image(IcdUnit.ShotInterval));
 
-                elsif (IcdUnit.TachyCount < SIGNAL_NUMBER AND 
+                -- keep treating patients who is already being treated
+                elsif (IcdUnit.TachyCount < SIGNAL_NUMBER AND
                         Integer(CurrentTime) = IcdUnit.ShotTime) then
                     -- Set the impulse joules to signal joules
                     ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
-                    
+
                     IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
-                    IcdUnit.ShotTime := IcdUnit.ShotTime + 
+                    IcdUnit.ShotTime := IcdUnit.ShotTime +
                                         IcdUnit.ShotInterval;
                 end if;
             end if;
-                
+
+            -- check if treatment has completed
             if (IcdUnit.TachyCount = SIGNAL_NUMBER) then
                 Put_Line("Tachycardia Treatment stops at " & Integer'Image(RecordRate.Rate));
                 IcdUnit.TachyCount := 0;
@@ -156,10 +167,11 @@ package body ICD is
 
     end Tick;
 
-    function CheckAuthorisation(IcdUnit : in ICDType; 
+    function CheckAuthorisation(IcdUnit : in ICDType;
     Prin : Principal.PrincipalPtr; Role : Principal.Role) return Boolean is
         Authorised : Boolean := False;
     begin
+        -- check if principal role is valid
         if (Principal.HasRole(Prin.all, Role)) then
             for I in IcdUnit.KnownPrincipals'Range loop
                 if (IcdUnit.KnownPrincipals(I) = Prin) then
@@ -180,14 +192,16 @@ package body ICD is
         -- there is no 7 history records
         if (IcdUnit.HistoryPos < TOTAL_NUMBER_HISTORY) then
             return False;
+
+        -- calculate the average change rate
         else
             while I < LoopRange loop
                 if (I = 1) then
-                    TotalChange := abs (IcdUnit.PreHistory(2).Rate - 
+                    TotalChange := abs (IcdUnit.PreHistory(2).Rate -
                                         IcdUnit.PreHistory(1).Rate);
                     I := I + 1;
                 elsif (I = 2) then
-                    TotalChange := abs (IcdUnit.History(I-1).Rate - 
+                    TotalChange := abs (IcdUnit.History(I-1).Rate -
                                         IcdUnit.PreHistory(2).Rate);
                     I := I + 1;
                 else
@@ -196,9 +210,10 @@ package body ICD is
                     I := I + 1;
                 end if;
             end loop;
-            
+
             AverageChange := TotalChange / 6;
 
+            -- check if the average change rate is too high
             if (AverageChange >= 10) then
                 return True;
             else
@@ -207,9 +222,10 @@ package body ICD is
         end if;
     end IsVentricleFibrillation;
 
-    procedure AppendHistory(IcdUnit : in out ICDType; 
+    procedure AppendHistory(IcdUnit : in out ICDType;
             RecordRate : in Network.RateRecord) is
     begin
+    -- check if the history has full record
         if (IcdUnit.HistoryPos <= IcdUnit.History'Last) then
             IcdUnit.History(IcdUnit.HistoryPos) := RecordRate;
             IcdUnit.HistoryPos := IcdUnit.HistoryPos + 1;
@@ -225,15 +241,19 @@ package body ICD is
         end if;
     end AppendHistory;
 
+    -- clear history
     procedure ResetHistory(IcdUnit : in out ICDType) is
         RateRecord : Network.RateRecord;
     begin
         RateRecord.Rate := 0;
         RateRecord.Time := 0;
+
+        -- clear prehistory
         for I in Integer range 1..NUMBER_PREHISTORY loop
             IcdUnit.PreHistory(I) := RateRecord;
         end loop;
 
+        -- clear history
         for I in Integer range 1..IcdUnit.History'Last loop
             IcdUnit.History(I) := RateRecord;
         end loop;
