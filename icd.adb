@@ -6,6 +6,9 @@ with ImpulseGenerator;
 with Network; use Network;
 with Measures; use Measures;
 
+-- Design Problem, Gen should only tick once every Icd Tick
+-- Gen should tick with ICD at zero joules when ther is no impulse
+
 package body ICD is
 
     procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
