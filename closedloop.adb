@@ -42,7 +42,7 @@ package body ClosedLoop is
         Heart.Init(Hrt);
         HRM.Init(Monitor);
         ImpulseGenerator.Init(Gen);
-        ICD.Init(IcdUnit, Monitor, Gen, Net, KnownPrincipals);
+        ICD.Init(IcdUnit, Monitor, Gen, KnownPrincipals);
         CurrentTime := 0;
     end Init;
 
@@ -57,17 +57,12 @@ package body ClosedLoop is
         Response : Network.NetworkMessage;
 
     begin
-        -- HeartMonitor Tick
-        HRM.Tick(Monitor, Hrt);
-
         -- Heart Tick
         Heart.Tick(Hrt);
-
-        -- NetWork Tick
-        Network.Tick(Net);
-
         -- ICD Tick (included Generator Tick if needed)
         ICD.Tick(IcdUnit, Hrt, CurrentTime);
+        -- NetWork Tick
+        Network.Tick(Net);
 
         -- Receive the messages from the network
         -- and send them into the ICD unit
@@ -76,10 +71,10 @@ package body ClosedLoop is
             Network.SendMessage(Net, Msg);
             case Msg.MessageType is
                 when ReadRateHistoryRequest =>
-                    if ICD.CheckAuthorisation(IcdUnit, Msg.HSource, 
-                                                Principal.ClinicalAssistant)
+                    if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit, 
+                    Msg.HSource, Principal.ClinicalAssistant)
                     OR ICD.CheckAuthorisation(IcdUnit, Msg.HSource, 
-                                                Principal.Cardiologist) then
+                                                Principal.Cardiologist)) then
                         Response := ICD.ReadRateHistoryResponse(IcdUnit, 
                                                 Msg.HSource);
                     end if;
@@ -119,7 +114,7 @@ package body ClosedLoop is
 
         -- increment the current time
         CurrentTime := CurrentTime + 1;
-
+        -- delay 0.1;
     end Tick;
 
 end ClosedLoop;

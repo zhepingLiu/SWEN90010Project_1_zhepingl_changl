@@ -7,13 +7,15 @@ with Measures;
 
 package ICD is
 
-    INITIAL_TACHY_BOUND : constant Integer := 100;
-    INITIAL_JOULES_TO_DELIVER : constant Integer := 30;
-    TACHYCARDIA_RATE : constant Integer := 15;
+    INITIAL_TACHY_BOUND : constant Measures.BPM := 100;
+    INITIAL_JOULES_TO_DELIVER : constant Measures.Joules := 30;
+    ZERO_JOULES : constant Measures.Joules := 0;
+    TACHYCARDIA_RATE : constant Measures.BPM := 15;
     SIGNAL_NUMBER : constant Integer := 10;
     SIGNAL_JOULES : constant Measures.Joules := 2;
-    SIGNAL_INTERVAL : constant Measures.TickCount := 4;
     NUMBER_PREHISTORY : constant Integer := 2;
+    TOTAL_NUMBER_HISTORY : constant Integer := 7;
+    TOTAL_TICKS_MINUTE : constant Integer := 600;
 
     type PreRateHistory is array (Integer range 1..NUMBER_PREHISTORY)
                                  of Network.RateRecord;
@@ -31,7 +33,6 @@ package ICD is
         Monitor : HRM.HRMType;
         Gen : ImpulseGenerator.GeneratorType;
         KnownPrincipals : access Network.PrincipalArray;
-        Net : Network.Network;
         CurrentSetting : ICD.Setting;
         History : Network.RateHistory;
         PreHistory : PreRateHistory;
@@ -40,13 +41,13 @@ package ICD is
         TachyCount : Integer;
         TachycardiaDetectedRate : Measures.BPM;
         IsTachycardia : Boolean;
-        InTreatment : Boolean;
-        ShotTime : Measures.TickCount;
+        ShotTime : Integer;
+        ShotInterval : Integer;
     end record;
 
     procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
     Gen : in ImpulseGenerator.GeneratorType; 
-    Net : in Network.Network; KnownPrincipals : access Network.PrincipalArray);
+    KnownPrincipals : access Network.PrincipalArray);
 
     procedure Tick(IcdUnit : in out ICDType; Hrt : in out Heart.HeartType;
     CurrentTime : Measures.TickCount);

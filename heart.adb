@@ -5,7 +5,8 @@ package body Heart is
    
    -- Some boundaries for impulse shocks
    NoShock : constant Measures.Joules := 0;
-   SmallShock : constant Measures.Joules := 5;
+   --SmallShock : constant Measures.Joules := 5;
+   SmallShock : constant Measures.Joules := 35;
    
    -- Parameters for generating random heart rate upon initialisation
    HeartRateMu : constant Measures.BPM := 80;

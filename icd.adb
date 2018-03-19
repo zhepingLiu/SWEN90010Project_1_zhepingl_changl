@@ -9,22 +9,18 @@ with Measures; use Measures;
 package body ICD is
 
     procedure Init(IcdUnit : out ICDType; Monitor : in HRM.HRMType; 
-    Gen : in ImpulseGenerator.GeneratorType; Net : in Network.Network; 
+    Gen : in ImpulseGenerator.GeneratorType;
     KnownPrincipals : access Network.PrincipalArray) is
     begin
         IcdUnit.IsOn := False;
         IcdUnit.Monitor := Monitor;
         IcdUnit.Gen := Gen;
-        IcdUnit.Net := Net;
         IcdUnit.KnownPrincipals := KnownPrincipals;
         IcdUnit.HistoryPos := IcdUnit.History'First;
 
         -- initialise the settings of ICD
         IcdUnit.CurrentSetting.TachyBound := INITIAL_TACHY_BOUND;
         IcdUnit.CurrentSetting.JoulesToDeliver := INITIAL_JOULES_TO_DELIVER;
-
-        IcdUnit.TachyCount := 0;
-        IcdUnit.IsTachycardia := False;
     end Init;
 
     function On(IcdUnit : in out ICDType; Hrt : Heart.HeartType;
@@ -39,6 +35,11 @@ package body ICD is
         ImpulseGenerator.On(IcdUnit.Gen);
         -- set the source of the response message
         Response.MOnSource := Prin;
+        -- reset the history when restart the ICD
+        IcdUnit.HistoryPos := IcdUnit.History'First;
+        -- reset the tachy count and isTachycardia when restart the ICD
+        IcdUnit.TachyCount := 0;
+        IcdUnit.IsTachycardia := False;
         return Response;
     end On;
 
@@ -92,55 +93,65 @@ package body ICD is
         RecordRate : Network.RateRecord;
     begin
         if IcdUnit.IsOn then
+            -- HeartMonitor Tick
+            HRM.Tick(IcdUnit.Monitor, Hrt);
+
             -- record the current rate and current time
             HRM.GetRate(IcdUnit.Monitor, RecordRate.Rate);
             RecordRate.Time := CurrentTime;
+            
+            Put_Line("Current Rate is " & Integer'Image(RecordRate.Rate));
+
             -- append the record into History
             AppendHistory(IcdUnit, RecordRate);
 
-            if (RecordRate.Rate >= IcdUnit.CurrentSetting.TachyBound) then
-                IcdUnit.IsTachycardia := True;
-                IcdUnit.TachycardiaDetectedRate := RecordRate.Rate;
+            if (IcdUnit.IsTachycardia OR RecordRate.Rate >= 
+                        IcdUnit.CurrentSetting.TachyBound) then
+                if (IcdUnit.TachyCount = 0) then
+                    -- Set the impulse joules to signal joules
+                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
+                    -- Tick the generator to impact the heart
+                    ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
+                    -- Set back the impulse to zero joules
+                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
+                    IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
+
+                    Put_Line("Tachycardia is detected at " & Integer'Image(RecordRate.Rate));
+                    IcdUnit.IsTachycardia := True;
+                    IcdUnit.ShotInterval := TOTAL_TICKS_MINUTE / 
+                                    (RecordRate.Rate + TACHYCARDIA_RATE);
+                    IcdUnit.ShotTime := Integer(CurrentTime) + Integer(IcdUnit.ShotInterval);
+                    Put_Line("Shot Interval is " & Integer'Image(IcdUnit.ShotInterval));
+
+                elsif (IcdUnit.TachyCount < SIGNAL_NUMBER AND 
+                        Integer(CurrentTime) = IcdUnit.ShotTime) then
+                    -- Set the impulse joules to signal joules
+                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
+                    -- Tick the generator to impact the heart
+                    ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
+                    -- Set back the impulse to zero joules
+                    ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
+                    
+                    IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
+                    IcdUnit.ShotTime := IcdUnit.ShotTime + 
+                                        IcdUnit.ShotInterval;
+                end if;
             end if;
-
-            if (IcdUnit.IsTachycardia) then
-                -- check if the patient reaches the upper bound at this moment
-                if (RecordRate.Rate >= IcdUnit.TachycardiaDetectedRate
-                    + TACHYCARDIA_RATE OR IcdUnit.InTreatment) then
-
-                    if (IcdUnit.TachyCount = 0) then
-                        IcdUnit.ShotTime := CurrentTime + ICD.SIGNAL_INTERVAL;
-                        ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
-                        ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
-                        IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
-                        IcdUnit.InTreatment := True;
-
-                    elsif (IcdUnit.TachyCount < SIGNAL_NUMBER AND 
-                            CurrentTime = IcdUnit.ShotTime) then
-                        ImpulseGenerator.SetImpulse(IcdUnit.Gen, SIGNAL_JOULES);
-                        ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
-                        IcdUnit.TachyCount := IcdUnit.TachyCount + 1;
-                        IcdUnit.ShotTime := IcdUnit.ShotTime + 
-                                            ICD.SIGNAL_INTERVAL;
-
-                    end if;
-                end if;
                 
-                if (IcdUnit.TachyCount = SIGNAL_NUMBER) then
-                    IcdUnit.TachyCount := 0;
-                    IcdUnit.IsTachycardia := False;
-                    IcdUnit.InTreatment := False;
-                    Put_Line("Tachycardia 3: " & 
-                                Integer'Image(IcdUnit.TachyCount));
-                end if;
+            if (IcdUnit.TachyCount = SIGNAL_NUMBER) then
+                Put_Line("Tachycardia Treatment stops at " & Integer'Image(RecordRate.Rate));
+                IcdUnit.TachyCount := 0;
+                IcdUnit.IsTachycardia := False;
             end if;
 
             -- check if the patient has ventricle fibrillation at this moment
             if (IsVentricleFibrillation(IcdUnit)) then
-                -- Put_Line("Ventricle Fibrillation.");
+                Put_Line("Ventricle Fibrillation Detected.");
                 ImpulseGenerator.SetImpulse(IcdUnit.Gen, 
                         IcdUnit.CurrentSetting.JoulesToDeliver);
                 ImpulseGenerator.Tick(IcdUnit.Gen, Hrt);
+                -- Set back the impulse to zero joules
+                ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
             end if;
         end if;
     end Tick;
@@ -166,8 +177,8 @@ package body ICD is
         LoopRange : Integer;
     begin
         LoopRange := IcdUnit.History'Last + NUMBER_PREHISTORY;
-        -- there is no 6 history records
-        if (IcdUnit.HistoryPos <= IcdUnit.History'Last) then
+        -- there is no 7 history records
+        if (IcdUnit.HistoryPos < TOTAL_NUMBER_HISTORY) then
             return False;
         else
             while I < LoopRange loop
@@ -210,7 +221,7 @@ package body ICD is
             IcdUnit.History(3) := IcdUnit.History(4);
             IcdUnit.History(4) := IcdUnit.History(5);
             IcdUnit.History(5) := RecordRate;
-            IcdUnit.HistoryPos := IcdUnit.History'Last + NUMBER_PREHISTORY;
+            IcdUnit.HistoryPos := IcdUnit.HistoryPos + 1;
         end if;
     end AppendHistory;
 end ICD;
