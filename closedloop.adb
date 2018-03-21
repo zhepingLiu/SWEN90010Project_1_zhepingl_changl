@@ -74,9 +74,6 @@ package body ClosedLoop is
         Msg : Network.NetworkMessage;
         -- stores the current message response from the ICD
         Response : Network.NetworkMessage;
-
-        CurrentRate : Measures.BPM;
-
     begin
         -- ICD Tick (included Generator Tick and HRM Tick)
         ICD.Tick(IcdUnit, Hrt, CurrentTime);
