@@ -1,8 +1,0 @@
-# SWEN90010Project_1_zhepingl_changl
-## Author Zheping Liu, Chang Lu
-
-## Strategies for Implementation of ICD and CloseLoop
-
-###In this paragraph we will introduce the strategies we devise for our implementation for ICD device.
-###The ClosedLoop package will initialise all necessary components in the ICD system, including network, ICD, impulse generator, HRM and heart through Init procedure. In the Tick procedure, firstly, it will call tick in Heart component, secondly call tick in ICD component, thirdly tick the Network component to generate random message, finally, it will parse the message and do authorisation and mode check, then call the corresponding methods (ReadRateHistory, ModeOn, ModeOff, ReadSettings and ChangeSettings) in the ICD package.
-###In the ICD.Tick function, it will first call HRM.Tick, and record the rate read from HRM, finally add the current rate to the history. We will keep latest 7 records in the history, 5 of them will be returned when calling ReadRateHistory function, other 2 are kept for computing ventricle fibrillation. After this we will set the default impulse to zero joules. We will check if the patient is having ventricle fibrillation at the moment, if yes, we set the impulse to the required number in the current setting. If there is no ventricle fibrillation, we will check if the patient has tachycardia, if yes, we will set the impulse to 2 joules, compute the interval between each shock and calculate time for next shock. Finally, we will call ImpulseGenerator.Tick procedure at the end.

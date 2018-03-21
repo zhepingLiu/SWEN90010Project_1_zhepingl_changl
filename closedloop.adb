@@ -75,11 +75,13 @@ package body ClosedLoop is
         -- stores the current message response from the ICD
         Response : Network.NetworkMessage;
 
+        CurrentRate : Measures.BPM;
+
     begin
-        -- Heart Tick
-        Heart.Tick(Hrt);
         -- ICD Tick (included Generator Tick and HRM Tick)
         ICD.Tick(IcdUnit, Hrt, CurrentTime);
+        -- Heart Tick
+        Heart.Tick(Hrt);
         -- NetWork Tick
         Network.Tick(Net);
 
@@ -127,8 +129,10 @@ package body ClosedLoop is
                         Response := ICD.On(IcdUnit, Hrt, Msg.MOnSource);
                     end if;
                 -- Check authorisation and turn the ICD off only when ICD is on
+                -- and when the patient is not in tachycardia treatment
                 when ModeOff =>
-                    if IcdUnit.IsOn AND (ICD.CheckAuthorisation(IcdUnit,
+                    if IcdUnit.IsOn AND not IcdUnit.IsTachyCardia 
+                    AND (ICD.CheckAuthorisation(IcdUnit,
                             Msg.MOffSource, Principal.ClinicalAssistant)
                     OR ICD.CheckAuthorisation(IcdUnit, Msg.MOffSource,
                                             Principal.Cardiologist)) then

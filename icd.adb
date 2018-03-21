@@ -34,12 +34,12 @@ package body ICD is
     Prin : in Principal.PrincipalPtr) return Network.NetworkMessage is
         Response : Network.NetworkMessage(ModeOn);
     begin
-        -- turn on the ICD unit
-        IcdUnit.IsOn := True;
         -- turn on the HRM (need to pass the Hrt in)
         HRM.On(IcdUnit.Monitor, Hrt);
         -- turn on the Impulse Generator
         ImpulseGenerator.On(IcdUnit.Gen);
+        -- turn on the ICD unit
+        IcdUnit.IsOn := True;
         -- set the source of the response message
         Response.MOnSource := Prin;
         -- reset the history when restart the ICD
@@ -104,8 +104,13 @@ package body ICD is
     begin
         Response.CDestination := Prin;
         -- modify the settings here
+        -- check if the value is above the limit
+        if Request.CTachyBound <= MAX_JOULES_TO_DELIVER then 
+            IcdUnit.CurrentSetting.JoulesToDeliver := Request.CJoulesToDeliver;    
+        else 
+            IcdUnit.CurrentSetting.JoulesToDeliver := MAX_JOULES_TO_DELIVER;
+        end if;  
         IcdUnit.CurrentSetting.TachyBound := Request.CTachyBound;
-        IcdUnit.CurrentSetting.JoulesToDeliver := Request.CJoulesToDeliver;
         return Response;
     end ChangeSettingsResponse;
 
@@ -115,20 +120,20 @@ package body ICD is
     CurrentTime : Measures.TickCount) is
         RecordRate : Network.RateRecord;
     begin
-        -- Only Tick the ICD when ICD is Mode On
-        if IcdUnit.IsOn then
-            -- HRM Tick
-            HRM.Tick(IcdUnit.Monitor, Hrt);
+        -- set the impulse generator to deliver zero joules when
+        -- no problem detected in heart
+        ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
 
+        -- HRM Tick
+        HRM.Tick(IcdUnit.Monitor, Hrt);
+
+        -- Only Tick the ICD and HRM when ICD is Mode On
+        if IcdUnit.IsOn then
             -- record the current rate and current time
             HRM.GetRate(IcdUnit.Monitor, RecordRate.Rate);
             RecordRate.Time := CurrentTime;
 
             Put_Line("Current Rate is " & Integer'Image(RecordRate.Rate));
-
-            -- set the impulse generator to deliver zero joules when
-            -- no problem detected in heart
-            ImpulseGenerator.SetImpulse(IcdUnit.Gen, ZERO_JOULES);
 
             -- append the record into History
             AppendHistory(IcdUnit, RecordRate);
@@ -139,7 +144,6 @@ package body ICD is
                 -- set impluse of the generator according the current setting
                 ImpulseGenerator.SetImpulse(IcdUnit.Gen,
                         IcdUnit.CurrentSetting.JoulesToDeliver);
-
             -- check if there is a Tachycardia
             elsif (IcdUnit.IsTachycardia OR RecordRate.Rate >=
                         IcdUnit.CurrentSetting.TachyBound) then
@@ -161,9 +165,9 @@ package body ICD is
                     -- Compute the next impulse time
                     IcdUnit.ShotTime := Integer(CurrentTime) + 
                                     Integer(IcdUnit.ShotInterval);
+
                     Put_Line("Shot Interval is " & 
                                     Integer'Image(IcdUnit.ShotInterval));
-
                 -- keep treating patients who is already in treatment
                 elsif (IcdUnit.TachyCount < SIGNAL_NUMBER AND
                         Integer(CurrentTime) = IcdUnit.ShotTime) then
@@ -174,17 +178,15 @@ package body ICD is
                     -- Recompute the next impulse time
                     IcdUnit.ShotTime := IcdUnit.ShotTime +
                                         IcdUnit.ShotInterval;
-                end if;
-            end if;
-
-            -- check if treatment has completed
-            if (IcdUnit.TachyCount = SIGNAL_NUMBER) then
-                Put_Line("Tachycardia Treatment stops at " & 
+                -- check if treatment has completed
+                elsif (IcdUnit.TachyCount = SIGNAL_NUMBER) then
+                    Put_Line("Tachycardia Treatment stops at " & 
                                     Integer'Image(RecordRate.Rate));
-                -- reset the count for treatment
-                IcdUnit.TachyCount := 0;
-                -- indicate current tachycardia treatment is completed
-                IcdUnit.IsTachycardia := False;
+                    -- reset the count for treatment
+                    IcdUnit.TachyCount := 0;
+                    -- indicate current tachycardia treatment is completed
+                    IcdUnit.IsTachycardia := False;
+                end if;
             end if;
         end if;
 
@@ -276,19 +278,19 @@ package body ICD is
 
     -- Clear history
     procedure ResetHistory(IcdUnit : in out ICDType) is
-        RateRecord : Network.RateRecord;
+        EmptyRateRecord : Network.RateRecord;
     begin
-        RateRecord.Rate := 0;
-        RateRecord.Time := 0;
+        EmptyRateRecord.Rate := 0;
+        EmptyRateRecord.Time := 0;
 
         -- Clear prehistory
         for I in Integer range 1..NUMBER_PREHISTORY loop
-            IcdUnit.PreHistory(I) := RateRecord;
+            IcdUnit.PreHistory(I) := EmptyRateRecord;
         end loop;
 
         -- Clear history
         for I in Integer range 1..IcdUnit.History'Last loop
-            IcdUnit.History(I) := RateRecord;
+            IcdUnit.History(I) := EmptyRateRecord;
         end loop;
     end ResetHistory;
 end ICD;

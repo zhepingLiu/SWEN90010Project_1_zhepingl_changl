@@ -12,6 +12,7 @@ package ICD is
 
     INITIAL_TACHY_BOUND : constant Measures.BPM := 100;
     INITIAL_JOULES_TO_DELIVER : constant Measures.Joules := 30;
+    MAX_JOULES_TO_DELIVER : constant Measures.Joules := 45;
     ZERO_JOULES : constant Measures.Joules := 0;
     SIGNAL_NUMBER : constant Integer := 10;
     SIGNAL_JOULES : constant Measures.Joules := 2;
