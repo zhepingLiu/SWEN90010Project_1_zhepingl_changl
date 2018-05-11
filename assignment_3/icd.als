@@ -351,5 +351,7 @@ check turns_on_safe for 5 but 8 State
 //	(by proceeding recv_change_settings to modify joules to deliver) without the real SendChangeSettings action being performed.
 
 // Relationship to our HAZOP study:
-//
-// <FILL IN HERE>
+//	None of the attack is identified in our hazard analysis.
+
+// One possible new hazard is a BEFORE event:   That the joules to deliver variable changes before
+//  the cardiologist send a change setting request to ICD system.
