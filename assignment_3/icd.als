@@ -334,7 +334,7 @@ assert turns_on_safe {
 }
 
 // NOTE: you may want to adjust these thresholds for your own use
-check turns_on_safe for 4
+check turns_on_safe for 5 but 8 State
 // <FILL IN HERE: does the assertion hold in the updated attacker model in which
 // the attacker cannot guess Principal ids? why / why not?>
 //TODO: The assertion doesn't hold. 
