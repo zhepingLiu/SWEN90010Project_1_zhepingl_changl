@@ -123,7 +123,6 @@ pred recv_mode_on[s, s' : State] {
   //Precondition
   s.icd_mode = ModeOff and 
   ModeOnMessage in s.network and
-  s.last_action in SendModeOn and
   s.last_action.who in s.authorised_card
   //Postcondition
   one m : Message | m = s.network and
@@ -174,7 +173,6 @@ pred recv_change_settings[s, s' : State] {
   //TODO:Precondition
   s.icd_mode in ModeOff and
   ChangeSettingsMessage in s.network and
-  s.last_action in SendChangeSettings and
   s.last_action.who in s.authorised_card
   //TODO:Postcondition
   one m : ChangeSettingsMessage | m = s.network and
@@ -328,13 +326,15 @@ check unexplained_assertion for 5
 // occurred
 assert turns_on_safe {
   //TODO:
-  all s : State |  all s' : ord/nexts[s] |  all s'' : ord/nexts[s'] |
-    s''.last_action in RecvModeOn => s.last_action in SendModeOn
+  all s : State | all s' : ord/next[s] |
+    (s'.last_action in RecvModeOn) => s.last_action in SendModeOn 
 
+  all s : State | all s' : ord/next[s] |
+    (s'.last_action in RecvChangeSettings)=> s.last_action in SendChangeSettings
 }
 
 // NOTE: you may want to adjust these thresholds for your own use
-check turns_on_safe for 5 but 8 State
+check turns_on_safe for 4
 // <FILL IN HERE: does the assertion hold in the updated attacker model in which
 // the attacker cannot guess Principal ids? why / why not?>
 //TODO: The assertion doesn't hold. 
