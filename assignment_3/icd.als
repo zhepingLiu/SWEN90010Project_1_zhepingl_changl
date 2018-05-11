@@ -304,6 +304,9 @@ check inv_always for 15
 // TODO: All actions should belong to either AttacherAction or Non-AttackerAction,
 // if there is a non-attacker RecvChangeSettings message, patient should not
 // be one of the roles for principal who send it.
+
+//  If the ICD system doesn't get attacked by the attacker, the system should never
+//  let the patient to be in the roles to receive change settings request.
 assert unexplained_assertion {
   all s : State |
       (all s' : State | s'.last_action not in AttackerAction) =>
@@ -313,10 +316,12 @@ assert unexplained_assertion {
 
 check unexplained_assertion for 5
 //TODO: It doesn't hold. This is since Principal can have a set of Role(s).
-// A Principal with cardiologist can also be a Patient. Therefore, if the last
-// action is RecvChangeSettings, the Patient can be a role of the principal
-// who didi last action, which is SendChangeSettings. Hence, the assertion
-// will fail.
+// A Principal contains cardiologist role can also contains patient role. Therefore,
+// if the in the init function the ICD include both cardiologist and patient to be
+// in the authorised_card.roles, and the Principal of SendChangeSettings action
+// happens to be equal to the authorised_card.roles of ICD system, then 
+// the patient role will exist in the roles of both SendChangeSettings and 
+// RecvChangeSettings action, which contradicts what assertion says.
 
 // Check that the device turns on only after properly instructed to
 // i.e. that the RecvModeOn action occurs only after a SendModeOn action has 
