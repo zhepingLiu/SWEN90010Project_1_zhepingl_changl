@@ -120,14 +120,13 @@ pred send_mode_on[s, s' : State] {
 //                last_action.who = the source of the ModeOn message
 //                and nothing else changes
 pred recv_mode_on[s, s' : State] {
-  //TODO:Precondition
-  s.icd_mode in ModeOff and 
-  s.impulse_mode in ModeOff and
-  s.network in ModeOnMessage and
+  //Precondition
+  s.icd_mode = ModeOff and 
+  ModeOnMessage in s.network and
   s.last_action in SendModeOn and
   s.last_action.who in s.authorised_card
-  //TODO:Postcondition
-  some m : ModeOnMessage | m = s.network and
+  //Postcondition
+  one m : Message | m = s.network and
   s'.network = s.network - m and
   s'.icd_mode = ModeOn and
   s'.impulse_mode = ModeOn and
@@ -138,8 +137,8 @@ pred recv_mode_on[s, s' : State] {
 }
 
 // Models the action in which a valid ChangeSettingsRequest message is sent
-// on the network, from the authorised cardiologist, specifying the new quantity of 
-// joules to deliver for ventrical fibrillation.
+// on the network, from the authorised cardiologist, specifying the new quantity
+// of joules to deliver for ventrical fibrillation.
 // Precondition:  none
 // Postcondition: network now contains a ChangeSettingRequest message from the 
 //                authorised cardiologist
@@ -160,31 +159,31 @@ pred send_change_settings[s, s' : State] {
 }
 
 // Models the action in which a valid ChangeSettingsRequest message is received
-// by the ICD, from the authorised cardiologist, causing the current joules to be 
-// updated to that contained in the message and the message to be removed from the 
-// network.
+// by the ICD, from the authorised cardiologist, causing the current joules to 
+// be updated to that contained in the message and the message to be removed 
+// from the network.
 // Precondition: The mode of ICD is ModeOff, and new joules to deliver is below
 //               the maximum amount allowed
 // Postcondition: The joules to deliver is new one from the ChangeSettingRequest
 //                message
+//                ChangeSettingMessage is removed from the network
 //                last_action in RecvChangeSettings and
 //                last_action.who = the source of the ChangeSettingsMessage
 //                and nothing else changes
 pred recv_change_settings[s, s' : State] {
   //TODO:Precondition
   s.icd_mode in ModeOff and
-  s.impulse_mode in ModeOff and
-  s.network in ChangeSettingsMessage and
+  ChangeSettingsMessage in s.network and
   s.last_action in SendChangeSettings and
   s.last_action.who in s.authorised_card
   //TODO:Postcondition
-  some m : ChangeSettingsMessage | m = s.network and
+  one m : ChangeSettingMessage | m = s.network and
   s'.network = s.network - m and
   s'.icd_mode = s.icd_mode and
   s'.impulse_mode = s.impulse_mode and
   //TODO: How do we check if joulesToDeliver is above limit?
   //      Do we need to check this upper limit?
-  s'.joules_to_deliver = s.joules_to_deliver and 
+  s'.joules_to_deliver = m.joules_to_deliver and 
   s'.authorised_card = s.authorised_card and
   s'.last_action in RecvChangeSettings and
   s'.last_action.who = m.source
@@ -204,21 +203,21 @@ pred recv_change_settings[s, s' : State] {
 // attacker's abilities.
 //
 // Attacker's abilities: can modify network contents arbitrarily
-// TODO:                      But attackers can only impersonate them to be a random
-// TODO:			  principal with cardiologist role
+// Updated abilities: The attacker cannot send message to the ICD system
+// as the authorised cardiologist anymore. However, attacker can still
+// intercept message from network and modify its contents arbitrarily
 //
 // Precondition: none
-// Postcondition: network state changes in accordance with attacker's abilities
+// Postcondition: only existing message state will change in accordance with 
+//                attacker's abilities
 //                last_action is AttackerAction
 //                and nothing else changes
 pred attacker_action[s, s' : State] {
-  //TODO: define a random Principal here
-  some random_prin : Principal | Cardiologist in random_prin.roles and
+  some m : Message | m in s.network and
   s'.icd_mode = s.icd_mode and
   s'.joules_to_deliver = s.joules_to_deliver and
   s'.impulse_mode = s.impulse_mode and
-  //TODO: Now the attcker needs to assign authorised_card a randomly generated Principal
-  s'.authorised_card = random_prin and
+  s'.authorised_card = s.authorised_card and
   s'.last_action = AttackerAction
 }
 
@@ -295,28 +294,33 @@ assert inv_always {
 // Check that the invariant is never violated during 15
 // state transitions
 check inv_always for 15
-// <FILL IN HERE: does the assertion hold? why / why not?>
 //TODO: It holds. When we switch the mode of the ICD system, we always
 // change the mode of ICD and Impulse Generator at the same time.
 // NOTE: you will want to use smaller thresholds if getting
 //            counterexamples, so you can interpret them
 
 // An unexplained assertion. You need to describe the meaning of this assertion
-// in the comment <FILL IN HERE>
-// TODO:
+// in the comment
+// TODO: All actions should belong to either AttacherAction or Non-AttackerAction,
+// if there is a non-attacker RecvChangeSettings message, patient should not
+// be one of the roles for principal who send it.
 assert unexplained_assertion {
   all s : State |
-      (all s' : State | s'.last_action not in AttackerAction) => //括号里面的s'是指什么的state?
-      s.last_action in RecvChangeSettings => //If last action is Receiving Change Settings
-      Patient not in s.last_action.who.roles //Patient is not the one do last action
+      (all s' : State | s'.last_action not in AttackerAction) =>
+      s.last_action in RecvChangeSettings =>
+      Patient not in s.last_action.who.roles
 }
 
 check unexplained_assertion for 5
-// <FILL IN HERE: does the assertion hold? why / why not?>
-//TODO: It doesn't hold. Why not?
+//TODO: It doesn't hold. This is since Principal can have a set of Role(s).
+// A Principal with cardiologist can also be a Patient. Therefore, if the last
+// action is RecvChangeSettings, the Patient can be a role of the principal
+// who didi last action, which is SendChangeSettings. Hence, the assertion
+// will fail.
 
 // Check that the device turns on only after properly instructed to
-// i.e. that the RecvModeOn action occurs only after a SendModeOn action has occurred
+// i.e. that the RecvModeOn action occurs only after a SendModeOn action has 
+// occurred
 assert turns_on_safe {
   //TODO:
   all s, s', s'' : State |
