@@ -340,23 +340,25 @@ check turns_on_safe for 5 but 8 State
 //TODO: The assertion doesn't hold. 
 // Reason:  When attacker modify the network message to be SendModeOn and the system happens to proceed a recv_mode_on 
 //              pred occasionally after the SendModeOn message is in the network, the RecvModeOn action will happen but without
-//              the SendModeOn action(which is replaced by Attacker action in this scenario) happens previously. 
+//              the SendModeOn action(which is replaced by Attacker action in this scenario) happens previously. So is that for
+//				 the SendChangeSettings action. The attacker can fake SendChangeSetting action and let ICD change settings
+//				 without a real sendChangeSettings action happens first.
 
 // what additional restrictions need to be added to the attacker model?
-// Answer: We should modify the attacker model to be not able to tamper the network message to be SendModeOn.
-//              Because as long as the attacker is able to tamper the network message to be SendModeOn, the attacker can
-//               fake the SendModeOn action successfully without being realized by ICD system, which could make RecvModeOn
-// 		     action happens without a real SendModeOn action happens first. 
+// Answer: We should modify the attacker model to not be able to use the authorised_role in the previous state. When
+// an attack action happens, the attack_action.role will contain a string such as "unknow_user" which is not in the
+// authorized_card.roles of ICD system. So despite the network message might change, the Settings and Mode will
+// not be changed as long as the authorized_card.roles of system doesnt recognize the attacker indentity.
 
 
 // Attacks still permitted by the updated attacker model:
 // 
-// The attacker can still fake the change settings operation by modifying the network message to be ChangeSettingsMessage 
-// with a random different joules number in it. In this scenario, the ICD system will change the settings
-//	(by proceeding recv_change_settings to modify joules to deliver) without the real SendChangeSettings action being performed.
+// The attacker can still tamper the network message to be any invalid or useless message to make the previous
+// network message expire. For example, when a cardiologist sends a ChangeSettingsMessage or a ModeOnMessage,
+// The attacker can tamper it before the ICD system receives this message and does correponding operations.
 
 // Relationship to our HAZOP study:
-//	None of the attack is identified in our hazard analysis.
+//	The attack is identified in our hazard analysis as a NO event, which is:
+//  When a cardiologist sends ChangeSettingsRequest to ICD, the ICD system doesnt receive the request and make response.
+//  When a cardiologist sends ModeOn Message to ICD, the ICD system doesnt receive the message and make response.
 
-// One possible new hazard is a BEFORE event:   That the joules to deliver variable changes before
-//  the cardiologist send a change setting request to ICD system.
