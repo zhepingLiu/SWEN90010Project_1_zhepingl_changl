@@ -177,7 +177,7 @@ pred recv_change_settings[s, s' : State] {
   s.last_action in SendChangeSettings and
   s.last_action.who in s.authorised_card
   //TODO:Postcondition
-  one m : ChangeSettingMessage | m = s.network and
+  one m : ChangeSettingsMessage | m = s.network and
   s'.network = s.network - m and
   s'.icd_mode = s.icd_mode and
   s'.impulse_mode = s.impulse_mode and
@@ -323,20 +323,32 @@ check unexplained_assertion for 5
 // occurred
 assert turns_on_safe {
   //TODO:
-  all s, s', s'' : State |
-  recv_mode_on[s', s''] => send_mode_on[s, s']
+  all s : State |  all s' : ord/nexts[s] |  all s'' : ord/nexts[s'] |
+    s''.last_action in RecvModeOn => s.last_action in SendModeOn
+
 }
 
 // NOTE: you may want to adjust these thresholds for your own use
 check turns_on_safe for 5 but 8 State
 // <FILL IN HERE: does the assertion hold in the updated attacker model in which
 // the attacker cannot guess Principal ids? why / why not?>
-//TODO: The assertion doesn't hold. Why not?
+//TODO: The assertion doesn't hold. 
+// Reason:  When attacker modify the network message to be SendModeOn and the system happens to proceed a recv_mode_on 
+//              pred occasionally after the SendModeOn message is in the network, the RecvModeOn action will happen but without
+//              the SendModeOn action(which is replaced by Attacker action in this scenario) happens previously. 
+
 // what additional restrictions need to be added to the attacker model?
+// Answer: We should modify the attacker model to be not able to tamper the network message to be SendModeOn.
+//              Because as long as the attacker is able to tamper the network message to be SendModeOn, the attacker can
+//               fake the SendModeOn action successfully without being realized by ICD system, which could make RecvModeOn
+// 		     action happens without a real SendModeOn action happens first. 
+
 
 // Attacks still permitted by the updated attacker model:
 // 
-// <FILL IN HERE>
+// The attacker can still fake the change settings operation by modifying the network message to be ChangeSettingsMessage 
+// with a random different joules number in it. In this scenario, the ICD system will change the settings
+//	(by proceeding recv_change_settings to modify joules to deliver) without the real SendChangeSettings action being performed.
 
 // Relationship to our HAZOP study:
 //
