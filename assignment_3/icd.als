@@ -35,7 +35,6 @@ sig ChangeSettingsMessage extends Message {
 
 // ModeOn message
 sig ModeOnMessage extends Message {
-  joules_to_deliver : Joules
 }
 
 
@@ -61,12 +60,12 @@ one sig DummyInitialAction extends Action {}
 
 // The system state
 sig State {
-  network : lone Message,              // CAN Bus state: holds up to one message
-  icd_mode : Mode,                 // whether ICD system is in on or off mode
-  impulse_mode : Mode,             // whether the impulse generator is on or off
-  joules_to_deliver : Joules,      // joules to deliver for ventrical fibrillation
-  authorised_card : Principal,     // the authorised cardiologist
-  last_action : Action,            // identifies the most recent action performed
+  network : lone Message,        // CAN Bus state: holds up to one message
+  icd_mode : Mode,               // whether ICD system is in on or off mode
+  impulse_mode : Mode,           // whether the impulse generator is on or off
+  joules_to_deliver : Joules,    // joules to deliver for ventrical fibrillation
+  authorised_card : Principal,   // the authorised cardiologist
+  last_action : Action,          // identifies the most recent action performed
 }
 
 // an axiom that restricts the model to never allow more than one messasge on
@@ -293,19 +292,19 @@ assert inv_always {
 // Check that the invariant is never violated during 15
 // state transitions
 check inv_always for 15
-//TODO: It holds. When we switch the mode of the ICD system, we always
+//It holds. When we switch the mode of the ICD system, we always
 // change the mode of ICD and Impulse Generator at the same time.
 // NOTE: you will want to use smaller thresholds if getting
 //            counterexamples, so you can interpret them
 
 // An unexplained assertion. You need to describe the meaning of this assertion
 // in the comment
-// TODO: All actions should belong to either AttacherAction or Non-AttackerAction,
+// All actions should belong to either AttacherAction or Non-AttackerAction,
 // if there is a non-attacker RecvChangeSettings message, patient should not
 // be one of the roles for principal who send it.
 
-//  If the ICD system doesn't get attacked by the attacker, the system should never
-//  let the patient to be in the roles to receive change settings request.
+//  If the ICD system doesn't get attacked by the attacker, the system should 
+//  never let the patient to be in the roles to receive change settings request.
 assert unexplained_assertion {
   all s : State |
       (all s' : State | s'.last_action not in AttackerAction) =>
@@ -315,12 +314,13 @@ assert unexplained_assertion {
 
 check unexplained_assertion for 5
 //TODO: It doesn't hold. This is since Principal can have a set of Role(s).
-// A Principal contains cardiologist role can also contains patient role. Therefore,
-// if the in the init function the ICD include both cardiologist and patient to be
-// in the authorised_card.roles, and the Principal of SendChangeSettings action
-// happens to be equal to the authorised_card.roles of ICD system, then 
-// the patient role will exist in the roles of both SendChangeSettings and 
-// RecvChangeSettings action, which contradicts what assertion says.
+// A Principal contains cardiologist role can also contains patient role. 
+// Therefore, if the in the init function the ICD include both cardiologist and 
+// patient to be in the authorised_card.roles, and the Principal of 
+// SendChangeSettings action happens to be equal to the authorised_card.roles of
+// ICD system, then the patient role will exist in the roles of both 
+// SendChangeSettings and RecvChangeSettings action, which contradicts what 
+// assertion says.
 
 // Check that the device turns on only after properly instructed to
 // i.e. that the RecvModeOn action occurs only after a SendModeOn action has 
@@ -329,9 +329,6 @@ assert turns_on_safe {
   //TODO:
   all s : State | all s' : ord/next[s] |
     (s'.last_action in RecvModeOn) => s.last_action in SendModeOn 
-
-  all s : State | all s' : ord/next[s] |
-    (s'.last_action in RecvChangeSettings)=> s.last_action in SendChangeSettings
 }
 
 // NOTE: you may want to adjust these thresholds for your own use
@@ -339,26 +336,35 @@ check turns_on_safe for 5 but 8 State
 // <FILL IN HERE: does the assertion hold in the updated attacker model in which
 // the attacker cannot guess Principal ids? why / why not?>
 //TODO: The assertion doesn't hold. 
-// Reason:  When attacker modify the network message to be SendModeOn and the system happens to proceed a recv_mode_on 
-//              pred occasionally after the SendModeOn message is in the network, the RecvModeOn action will happen but without
-//              the SendModeOn action(which is replaced by Attacker action in this scenario) happens previously. So is that for
-//				 the SendChangeSettings action. The attacker can fake SendChangeSetting action and let ICD change settings
-//				 without a real sendChangeSettings action happens first.
+// Reason:  When attacker modify the network message to be SendModeOn and the 
+//          system happens to proceed a recv_mode_on pred occasionally after the
+//          SendModeOn message is in the network, the RecvModeOn action will 
+//          happen but without the SendModeOn action(which is replaced by 
+//          Attacker action in this scenario) happens previously. So is that for
+//				  the SendChangeSettings action. The attacker can fake 
+//          SendChangeSetting action and let ICD change settings
+//				  without a real sendChangeSettings action happens first.
 
 // what additional restrictions need to be added to the attacker model?
-// Answer: We should modify the attacker model to not be able to use the authorised_role in the previous state. When
-// an attack action happens, the attack_action.role will contain a string such as "unknow_user" which is not in the
-// authorized_card.roles of ICD system. So despite the network message might change, the Settings and Mode will
-// not be changed as long as the authorized_card.roles of system doesnt recognize the attacker indentity.
+// Answer: We should modify the attacker model to not be able to use the 
+//         authorised_role in the previous state. When an attack action happens,
+//         the attack_action.role will contain a string such as "unknow_user" 
+//         which is not in the authorized_card.roles of ICD system. So despite 
+//         the network message might change, the Settings and Mode will not be 
+//         changed as long as the authorized_card.roles of system doesnt 
+//         recognize the attacker indentity.
 
 
 // Attacks still permitted by the updated attacker model:
-// 
-// The attacker can still tamper the network message to be any invalid or useless message to make the previous
-// network message expire. For example, when a cardiologist sends a ChangeSettingsMessage or a ModeOnMessage,
-// The attacker can tamper it before the ICD system receives this message and does correponding operations.
+// The attacker can still tamper the network message to be any invalid or 
+// useless message to make the previous network message expire. For example, 
+// when a cardiologist sends a ChangeSettingsMessage or a ModeOnMessage,
+// The attacker can tamper it before the ICD system receives this message and 
+// does correponding operations.
 
 // Relationship to our HAZOP study:
-//	The attack is identified in our hazard analysis as a NO event, which is:
-//  When a cardiologist sends ChangeSettingsRequest to ICD, the ICD system doesnt receive the request and make response.
-//  When a cardiologist sends ModeOn Message to ICD, the ICD system doesnt receive the message and make response.
+// The attack is identified in our hazard analysis as a NO event, which is:
+// - When a cardiologist sends ChangeSettingsRequest to ICD, the ICD system 
+//   doesn't receive the request and make response.
+// - When a cardiologist sends ModeOn Message to ICD, the ICD system doesn't 
+//   receive the message and make response.
