@@ -35,6 +35,7 @@ sig ChangeSettingsMessage extends Message {
 
 // ModeOn message
 sig ModeOnMessage extends Message {
+  joules_to_deliver : Joules
 }
 
 
@@ -125,7 +126,7 @@ pred recv_mode_on[s, s' : State] {
   ModeOnMessage in s.network and
   s.last_action.who in s.authorised_card
   //Postcondition
-  one m : Message | m = s.network and
+  one m : ModeOnMessage | m = s.network and
   s'.network = s.network - m and
   s'.icd_mode = ModeOn and
   s'.impulse_mode = ModeOn and
@@ -361,4 +362,3 @@ check turns_on_safe for 5 but 8 State
 //	The attack is identified in our hazard analysis as a NO event, which is:
 //  When a cardiologist sends ChangeSettingsRequest to ICD, the ICD system doesnt receive the request and make response.
 //  When a cardiologist sends ModeOn Message to ICD, the ICD system doesnt receive the message and make response.
-
