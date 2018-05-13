@@ -249,8 +249,6 @@ fact init_state {
 }
 
 // =========================== Properties ====================================
-
-
 // An example assertion and check:
 // Specifies that once the ICD is in the On mode, it never leaves
 // the On mode in all future states in the execution trace, 
@@ -259,10 +257,13 @@ assert icd_never_off_after_on {
   all s : State | all s' : ord/nexts[s] | 
      s.icd_mode = ModeOn implies s'.icd_mode = ModeOn
 }
+// This assertion holds both before and after modifying
+// the attacker action. The current Alloy model does not
+// define the behaviour of switching off the ICD.
+// Therefore, once the ICD is On, it will never turn
+// off.
 
 check icd_never_off_after_on for 10 expect 0
-
-
 
 // Describes a basic sanity condition of the system about how the modes of the
 // ICD system and the impulse generator are related to each other. 
@@ -284,7 +285,11 @@ assert inv_always {
   // all s : State | inv[s]
   // This is because when checking this assertion, the linear order
   // defined on States causes all States considered by Alloy to come
-  // from the linear order
+  // from the linear order.
+
+  // After updating attacker action, the assertion still holds. This is
+  // since the attacker can only modify the network message, but
+  // cannot modify the mode of ICD and Impulse Generator.
 }
 
 // Check that the invariant is never violated during 15
@@ -319,6 +324,10 @@ check unexplained_assertion for 5
 // ICD system, then the patient role will exist in the roles of both 
 // SendChangeSettings and RecvChangeSettings action, which contradicts what 
 // assertion says.
+
+// After updating the attacker action, the assertion still fails. This is because
+// the updated attacker action does not affect the Principals may have both
+// Patient role and Cardiologist role.
 
 // Check that the device turns on only after properly instructed to
 // i.e. that the RecvModeOn action occurs only after a SendModeOn action has 
