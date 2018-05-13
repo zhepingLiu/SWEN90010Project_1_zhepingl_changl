@@ -1,6 +1,7 @@
 // ===========================================================================
 // SWEN90010 2018 - Assignment 3 Submission
 // by Zheping Liu, zhepingl, 683781
+// and Chang Lu, changl, 811074
 // ===========================================================================
 
 module icd
@@ -145,12 +146,11 @@ pred recv_mode_on[s, s' : State] {
 //                last_action.who = the source of the ChangeSettingsMessage
 //                and nothing else changes
 pred send_change_settings[s, s' : State] {
-  //TODO:Postcondition
+  //Postcondition
   some m : ChangeSettingsMessage | m.source = s.authorised_card and
   s'.network = s.network + m and
   s'.icd_mode = s.icd_mode and
   s'.impulse_mode = s.impulse_mode and
-  //joule_to_deliver is not changed in the Send request, but in Recv
   s'.joules_to_deliver = s.joules_to_deliver and
   s'.authorised_card = s.authorised_card and
   s'.last_action in SendChangeSettings and
@@ -170,17 +170,15 @@ pred send_change_settings[s, s' : State] {
 //                last_action.who = the source of the ChangeSettingsMessage
 //                and nothing else changes
 pred recv_change_settings[s, s' : State] {
-  //TODO:Precondition
+  //Precondition
   s.icd_mode in ModeOff and
   ChangeSettingsMessage in s.network and
   s.last_action.who in s.authorised_card
-  //TODO:Postcondition
+  //Postcondition
   one m : ChangeSettingsMessage | m = s.network and
   s'.network = s.network - m and
   s'.icd_mode = s.icd_mode and
   s'.impulse_mode = s.impulse_mode and
-  //TODO: How do we check if joulesToDeliver is above limit?
-  //      Do we need to check this upper limit?
   s'.joules_to_deliver = m.joules_to_deliver and 
   s'.authorised_card = s.authorised_card and
   s'.last_action in RecvChangeSettings and
@@ -271,7 +269,7 @@ check icd_never_off_after_on for 10 expect 0
 // This condition should be true in all states of the system, 
 // i.e. it should be an "invariant"
 pred inv[s : State] {
-  //TODO: The mode of ICD and Impulse Generator should always be the same
+  //The mode of ICD and Impulse Generator should always be the same
   //(s.icd_mode = ModeOn and s.impulse_mode = ModeOn)
   //or
   //(s.icd_mode = ModeOff and s.impulse_mode = ModeOff)
@@ -313,8 +311,8 @@ assert unexplained_assertion {
 }
 
 check unexplained_assertion for 5
-//TODO: It doesn't hold. This is since Principal can have a set of Role(s).
-// A Principal contains cardiologist role can also contains patient role. 
+// It doesn't hold. This is since Principal can have a set of Role(s).
+// A Principal with a role of cardiologist can also contain a role of patient. 
 // Therefore, if the in the init function the ICD include both cardiologist and 
 // patient to be in the authorised_card.roles, and the Principal of 
 // SendChangeSettings action happens to be equal to the authorised_card.roles of
@@ -326,44 +324,45 @@ check unexplained_assertion for 5
 // i.e. that the RecvModeOn action occurs only after a SendModeOn action has 
 // occurred
 assert turns_on_safe {
-  //TODO:
   all s : State | all s' : ord/next[s] |
-    (s'.last_action in RecvModeOn) => s.last_action in SendModeOn 
+    (s'.last_action in RecvModeOn) => s.last_action in SendModeOn
 }
 
 // NOTE: you may want to adjust these thresholds for your own use
 check turns_on_safe for 5 but 8 State
-// <FILL IN HERE: does the assertion hold in the updated attacker model in which
+// Does the assertion hold in the updated attacker model in which
 // the attacker cannot guess Principal ids? why / why not?>
-//TODO: The assertion doesn't hold. 
-// Reason:  When attacker modify the network message to be SendModeOn and the 
+// The assertion doesn't hold. 
+// Reason:  When attacker modify the network message to be ModeOnMessage and the 
 //          system happens to proceed a recv_mode_on pred occasionally after the
-//          SendModeOn message is in the network, the RecvModeOn action will 
-//          happen but without the SendModeOn action(which is replaced by 
-//          Attacker action in this scenario) happens previously. So is that for
-//				  the SendChangeSettings action. The attacker can fake 
-//          SendChangeSetting action and let ICD change settings
-//				  without a real sendChangeSettings action happens first.
+//          ModeOnMessage is in the network. The RecvModeOn action will 
+//          occur but without the SendModeOn action (which is intercepted and 
+//          replaced by Attacker) happens before it.
 
 // what additional restrictions need to be added to the attacker model?
-// Answer: We should modify the attacker model to not be able to use the 
-//         authorised_role in the previous state. When an attack action happens,
-//         the attack_action.role will contain a string such as "unknow_user" 
-//         which is not in the authorized_card.roles of ICD system. So despite 
-//         the network message might change, the Settings and Mode will not be 
-//         changed as long as the authorized_card.roles of system doesnt 
-//         recognize the attacker indentity.
-
+// Answer: Currently, the attacker cannot send a ModeOnMessage himself but he
+//         can intercept the message sent by an authorised cardiologist and
+//         modify its contents (e.g. modify ChangeSettingMessage to 
+//         ModeOnMessage).
+//         To restrict the attacker furthur, we need to prevent attacker from
+//         intercepting and modifying the message in the network.
+//         One way is to encrypting the messages in the network, and allow only
+//         ICD system to decrpty the message. Also, the message can include a
+//         hash value generated from the message. When ICD receives the message,
+//         it can generate the hash value at its end and comparing the two hash
+//         values.
+//         Network can also be enhanced to prevent attackers intercepting the
+//         messages easily.
 
 // Attacks still permitted by the updated attacker model:
-// The attacker can still tamper the network message to be any invalid or 
-// useless message to make the previous network message expire. For example, 
-// when a cardiologist sends a ChangeSettingsMessage or a ModeOnMessage,
-// The attacker can tamper it before the ICD system receives this message and 
-// does correponding operations.
+// Firstly, for both encryption and hash functions, if the attacker could
+// obtain the encrypting method or the hash function they are using, he can
+// easily modify the message. Secondly, if the attackers cannot modify the
+// message, they can still delete the message from network so the ICD system
+// may never receive the message.
 
 // Relationship to our HAZOP study:
-// The attack is identified in our hazard analysis as a NO event, which is:
+// The attack is identified in our hazard analysis as the following:
 // - When a cardiologist sends ChangeSettingsRequest to ICD, the ICD system 
 //   doesn't receive the request and make response.
 // - When a cardiologist sends ModeOn Message to ICD, the ICD system doesn't 
